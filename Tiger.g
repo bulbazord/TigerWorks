@@ -35,7 +35,7 @@ NUMBER
     : (DIGIT)+;
 
 WHITESPACE
-    : ( '\t' | ' ' | '\r' | '\n' | '\u000C' )+ {$channel = HIDDEN};
+    : ( '\t' | ' ' | '\r' | '\n' | '\u000C' )+ {$channel = HIDDEN;};
 
 fragment DIGIT
     : '0'..'9';

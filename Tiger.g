@@ -7,6 +7,23 @@ tokens {
     MINUS       = '-';
     MULT        = '*';
     DIV         = '/';
+    COMMA       = ',';
+    COLON       = ':';
+    SEMI        = ';';
+    LPAREN      = '(';
+    RPAREN      = ')';
+    LBRACK      = '[';
+    RBRACK      = ']';
+    EQ          = '=';
+    NEQ         = '<>';
+    LESSER      = '<';
+    LESSEREQ    = '<=';
+    GREATER     = '>';
+    GREATEREQ   = '>=';
+    AND         = '&';
+    OR          = '|';
+    ASSIGN      = ':=';
+   
 }
 
 // Parser rules
@@ -26,6 +43,69 @@ BEGIN
 
 END 
     : 'end';
+
+FUNCTION
+    : 'function';
+
+VOID
+    : 'void';
+
+MAIN
+    : 'main';
+
+TYPE
+    : 'type';
+
+ARRAY
+    : 'array';
+
+OF
+    : 'of';
+
+INT
+    : 'int';
+
+FIXEDPT
+    : 'fixedpt';
+
+VAR
+    : 'var';
+
+IF
+    : 'if';
+
+THEN
+    : 'then';
+
+ENDIF
+    : 'endif';
+
+ELSE
+    : 'else';
+
+WHILE
+    : 'while';
+
+DO
+    : 'do';
+
+ENDDO
+    : 'enddo';
+
+FOR
+    : 'for';
+
+TO
+    : 'to';
+
+DO
+    : 'do';
+
+BREAK
+    : 'break';
+
+RETURN
+    : 'return';
 
 ID  
     : ( UPPERCASE | LOWERCASE) ( UPPERCASE | LOWERCASE | DIGIT | UNDERSCORE)+;

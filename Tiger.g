@@ -25,15 +25,6 @@ tokens {
     ASSIGN      = ':=';
    
 }
-
-// Parser rules
-
-// These are for a test only. Everything will change later
-
-var     : ID;
-expr    : factor ( PLUS factor)*;
-factor  : NUMBER;
-
 // Lexer Rules
 
 // Finish filling in other keywords and other lexer rules
@@ -98,9 +89,6 @@ FOR
 TO
     : 'to';
 
-DO
-    : 'do';
-
 BREAK
     : 'break';
 
@@ -125,3 +113,27 @@ fragment LOWERCASE
 
 fragment UPPERCASE
     : 'A'..'Z';
+
+ 
+// Parser rules
+
+// These are for a test only. Everything will change later
+
+tigerprogram     : typedecllist functdecllist mainfunc;
+functdecllist    : functdecl functdecllist
+                 |/*epsilon*/;
+functdecl        : rettype function ID LPAREN paramlist RPAREN BEGIN blocklist END;
+mainfunc         : VOID MAIN LPAREN RPAREN BEGIN blocklist END;
+rettype          : VOID|typeid;
+paramlist        : param paramlisttail|/*epsilon*/;
+paramlisttail    : param paramlisttail|/*epsilon*/;
+param            : ID COLON typeid;
+blocklist        : block blocktail;
+blocktail        : block blocktail;|/*epsilon*/;
+block            : BEGIN NUMBER /*placeholder */ END;
+typeid           : TYPE /*placeholder*/;
+var              : ID;
+expr             : factor ( PLUS factor)*;
+factor           : NUMBER;
+typedecllist     : NUMBER /*placeholder*/;
+function         : NUMBER /*placeholder*/;

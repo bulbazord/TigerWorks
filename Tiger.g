@@ -2,11 +2,6 @@
 grammar Tiger;
 
 tokens {
-    UNDERSCORE  = '_';
-    PLUS        = '+';
-    MINUS       = '-';
-    MULT        = '*';
-    DIV         = '/';
     COMMA       = ',';
     COLON       = ':';
     SEMI        = ';';
@@ -14,6 +9,10 @@ tokens {
     RPAREN      = ')';
     LBRACK      = '[';
     RBRACK      = ']';
+    PLUS        = '+';
+    MINUS       = '-';
+    MULT        = '*';
+    DIV         = '/';
     EQ          = '=';
     NEQ         = '<>';
     LESSER      = '<';
@@ -23,20 +22,21 @@ tokens {
     AND         = '&';
     OR          = '|';
     ASSIGN      = ':=';
+    UNDERSCORE  = '_';
    
 }
 // Lexer Rules
 
 // Finish filling in other keywords and other lexer rules
 
+FUNCTION
+    : 'function';
+
 BEGIN
     : 'begin';
 
 END 
     : 'end';
-
-FUNCTION
-    : 'function';
 
 VOID
     : 'void';
@@ -120,20 +120,20 @@ fragment UPPERCASE
 // These are for a test only. Everything will change later
 
 tigerprogram     : typedecllist functdecllist mainfunc;
-functdecllist    : functdecl functdecllist
+functdecllist    : PLUS functdecllist
                  |/*epsilon*/;
-functdecl        : rettype function ID LPAREN paramlist RPAREN BEGIN blocklist END;
-mainfunc         : VOID MAIN LPAREN RPAREN BEGIN blocklist END;
-rettype          : VOID|typeid;
-paramlist        : param paramlisttail|/*epsilon*/;
-paramlisttail    : param paramlisttail|/*epsilon*/;
-param            : ID COLON typeid;
-blocklist        : block blocktail;
-blocktail        : block blocktail;|/*epsilon*/;
-block            : BEGIN NUMBER /*placeholder */ END;
-typeid           : TYPE /*placeholder*/;
+//functdecl        : rettype function ID LPAREN paramlist RPAREN BEGIN blocklist END;
+mainfunc         : VOID MAIN LPAREN RPAREN BEGIN NUMBER END;
+//rettype          : VOID|typeid;
+//paramlist        : param paramlisttail|/*epsilon*/;
+//paramlisttail    : param paramlisttail|/*epsilon*/;
+//param            : ID COLON typeid;
+//blocklist        : block blocktail;
+//blocktail        : block blocktail;|/*epsilon*/;
+//block            : BEGIN NUMBER /*placeholder */ END;
+//typeid           : TYPE /*placeholder*/;
 var              : ID;
 expr             : factor ( PLUS factor)*;
 factor           : NUMBER;
-typedecllist     : NUMBER /*placeholder*/;
-function         : NUMBER /*placeholder*/;
+typedecllist     : NUMBER (UNDERSCORE)* /*placeholder*/;
+//function         : NUMBER /*placeholder*/;

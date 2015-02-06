@@ -1,6 +1,10 @@
 // Rudimentary Grammar file
 grammar Tiger;
 
+options {
+    k = 1;
+}
+
 tokens {
     COMMA       = ',';
     COLON       = ':';
@@ -119,21 +123,19 @@ fragment UPPERCASE
 
 // These are for a test only. Everything will change later
 
-tigerprogram     : typedecllist functdecllist mainfunc;
-functdecllist    : PLUS functdecllist
-                 |/*epsilon*/;
-//functdecl        : rettype function ID LPAREN paramlist RPAREN BEGIN blocklist END;
-mainfunc         : VOID MAIN LPAREN RPAREN BEGIN NUMBER END;
-//rettype          : VOID|typeid;
-//paramlist        : param paramlisttail|/*epsilon*/;
-//paramlisttail    : param paramlisttail|/*epsilon*/;
-//param            : ID COLON typeid;
-//blocklist        : block blocktail;
-//blocktail        : block blocktail;|/*epsilon*/;
-//block            : BEGIN NUMBER /*placeholder */ END;
-//typeid           : TYPE /*placeholder*/;
-var              : ID;
-expr             : factor ( PLUS factor)*;
-factor           : NUMBER;
-typedecllist     : NUMBER (UNDERSCORE)* /*placeholder*/;
-//function         : NUMBER /*placeholder*/;
+tigerprogram    : typedecllist functdecllist mainfunc;
+functdecllist   : functdecl functdecllist | /*epsilon*/;
+functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN BEGIN blocklist END SEMI;
+mainfunc        : VOID MAIN LPAREN RPAREN BEGIN blocklist END SEMI;
+rettype         : VOID | typeid;
+paramlist       : param paramlisttail | /*epsilon*/;
+paramlisttail   : COMMA param paramlisttail | /*epsilon*/;
+param           : ID COLON typeid;
+blocklist       : block blocktail;
+blocktail       : block blocktail | /*epsilon*/;
+block           : BEGIN declseg statseq END SEMI;
+declseg         : typedecllist vardecllist; 
+typedecllist    : typedecl typedecllist | /*epsilon*/;
+vardecllist     : vardecl vardecllist | /*epsilon*/;
+typedecl        : TYPE ID EQ type;
+/* Continue writing at <type> rule */

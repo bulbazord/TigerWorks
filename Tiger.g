@@ -3,6 +3,7 @@ grammar Tiger;
 
 options {
     k = 1;
+    output = AST;
 }
 
 tokens {
@@ -11,25 +12,34 @@ tokens {
     SEMI        = ';';
     LPAREN      = '(';
     RPAREN      = ')';
-    LBRACK      = '[';
-    RBRACK      = ']';
-    PLUS        = '+';
-    MINUS       = '-';
     MULT        = '*';
     DIV         = '/';
+    PLUS        = '+';
+    MINUS       = '-';
     EQ          = '=';
     NEQ         = '<>';
-    LESSER      = '<';
-    LESSEREQ    = '<=';
     GREATER     = '>';
+    LESSER      = '<';
     GREATEREQ   = '>=';
+    LESSEREQ    = '<=';
     AND         = '&';
     OR          = '|';
+    LBRACK      = '[';
+    RBRACK      = ']';
     ASSIGN      = ':=';
     UNDERSCORE  = '_';
    
 }
 // Lexer Rules
+
+@lexer::members {
+    public void reportError(RecognitionException e) {
+        System.out.println("You messed up: ");
+        System.out.print("On line " + e.line);
+        System.out.print(", you this: " + e.input);
+        System.out.println();
+    }
+}
 
 // Finish filling in other keywords and other lexer rules
 
@@ -100,17 +110,22 @@ RETURN
     : 'return';
 
 ID  
-    : ( UPPERCASE | LOWERCASE) ( UPPERCASE | LOWERCASE | DIGIT | UNDERSCORE)+;
+    : ( UPPERCASE | LOWERCASE) ( UPPERCASE | LOWERCASE | DIGIT | UNDERSCORE)*;
 
+COMMENT
+    : '/*' ( options {greedy=false;} : . )* '*/' {$channel = HIDDEN;};
 
-NUMBER
-    : (DIGIT)+;
+INTLIT
+    : ((DIGIT)('0' | DIGIT)+) | '0'~('0' | DIGIT);
+
+FIXEDPTLIT
+    : (INTLIT)'.'('0' | DIGIT)(('0' | DIGIT) ('0' | DIGIT)?)?;
 
 WHITESPACE
     : ( '\t' | ' ' | '\r' | '\n' | '\u000C' )+ {$channel = HIDDEN;};
 
 fragment DIGIT
-    : '0'..'9';
+    : '1'..'9';
 
 fragment LOWERCASE
     : 'a'..'z';
@@ -123,19 +138,4 @@ fragment UPPERCASE
 
 // These are for a test only. Everything will change later
 
-tigerprogram    : typedecllist functdecllist mainfunc;
-functdecllist   : functdecl functdecllist | /*epsilon*/;
-functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN BEGIN blocklist END SEMI;
-mainfunc        : VOID MAIN LPAREN RPAREN BEGIN blocklist END SEMI;
-rettype         : VOID | typeid;
-paramlist       : param paramlisttail | /*epsilon*/;
-paramlisttail   : COMMA param paramlisttail | /*epsilon*/;
-param           : ID COLON typeid;
-blocklist       : block blocktail;
-blocktail       : block blocktail | /*epsilon*/;
-block           : BEGIN declseg statseq END SEMI;
-declseg         : typedecllist vardecllist; 
-typedecllist    : typedecl typedecllist | /*epsilon*/;
-vardecllist     : vardecl vardecllist | /*epsilon*/;
-typedecl        : TYPE ID EQ type;
-/* Continue writing at <type> rule */
+factor      : INTLIT | ID | FIXEDPTLIT;

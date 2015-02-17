@@ -1,31 +1,28 @@
 import org.antlr.runtime.*;
+import org.antlr.runtime.tree.CommonTree;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.nio.file.Files;
 
 public class Test {
     public static void main(String[] args) {
-        List<String> lines;
         try {
-            lines = Files.readAllLines(Paths.get(args[0]),
-                                                StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            lines = new ArrayList<>();
-        }
+            byte[] encoded = Files.readAllBytes(Paths.get(args[0]));
+            String program = new String(encoded, StandardCharsets.UTF_8);
+            TigerLexer lex = new TigerLexer(new ANTLRStringStream(program));
+            TokenStream tokens = new CommonTokenStream(lex);
 
-        for (String src : lines) {
-            TigerLexer lex = new TigerLexer(new ANTLRStringStream(src));
-            while (true) {
-                Token token = lex.nextToken();
-                if (token.getType() == TigerLexer.EOF) {
-                    break;
-                } else if (token.getType() != TigerLexer.WHITESPACE) {
-                    System.out.print(token.getText() + " ");
-                }
-            }
-            System.out.println();
+            TigerParser parse = new TigerParser(tokens);
+
+            TigerParser.factor_return ret = parse.factor();
+
+        } catch (RecognitionException re) {
+            System.out.println("RE thrown");
+        } catch (IOException e) {
+            System.out.println("Need a file bruh");
         }
     }
 }

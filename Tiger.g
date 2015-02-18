@@ -172,36 +172,7 @@ fragment UPPERCASE
 // Parser rules
 // These are for a test only. Everything will change later
 
-tigerprogram    : typedecllist functdecllist mainfunc EOF;
-functdecllist   : functdecl (functdecllist)* | /*epsilon*/;
-functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN BEGIN blocklist END SEMI;
-mainfunc        : VOID MAIN LPAREN RPAREN BEGIN blocklist END SEMI;
-rettype         : VOID | typeid;
-paramlist       : param paramlisttail | /*epsilon*/;
-paramlisttail   : COMMA param (paramlisttail)* | /*epsilon*/;
-param           : ID COLON typeid;
-blocklist       : block blocktail;
-blocktail       : block blocktail | /*epsilon*/;
-block           : BEGIN declseg statseq END SEMI;
-declseg         : typedecllist vardecllist; 
-typedecllist    : typedecl (typedecllist)* | /*epsilon*/;
-vardecllist     : vardecl (vardecllist)* | /*epsilon*/;
-typedecl        : TYPE ID EQ type;
-type            : basetype | ARRAY LBRACK INTLIT RBRACK OF basetype | ARRAY LBRACK INTLIT RBRACK LBRACK INTLIT RBRACK OF basetype;
-typeid          : basetype | ID;
-basetype        : INT | FIXEDPT;
-vardecl         : VAR idlist COLON typeid optionalinit SEMI;
-idlist          : ID | ID COMMA idlist;
-optionalinit    : ASSIGN const | /*epsilon*/;
-statseq         : stat | stat statseq;
-stat            : value ASSIGN expr SEMI | IF expr THEN statseq ENDIF SEMI |WHILE expr DO statseq ENDDO SEMI | FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI | optprefix ID LPAREN exprlist RPAREN SEMI | BREAK SEMI | RETURN expr SEMI | block;
-optprefix       : value ASSIGN | /*epsilon*/;
-expr            : const | value | expr binaryoperator expr | LPAREN expr RPAREN;
-const           : INTLIT | FIXEDPT /* check this part to make sure it is correct */;
-binaryoperator  : PLUS | MINUS | MULT | DIV | EQ | NEQ | LESSER | LESSEREQ | GREATER | GREATEREQ | AND | OR;
-exprlist        : expr exprlisttail | /*epsilon*/;
-exprlisttail    : expr (exprlisttail)* | /*epsilon*/;
-value           : ID valuetail;
-valuetail       : LBRACK indexexpr RBRACK | LBRACK indexexpr RBRACK LBRACK indexexpr RBRACK | /*epsilon*/;
-indexexpr       : INTLIT | ID | indexexpr indexoper indexexpr;
-indexoper       : PLUS | MINUS/* check to make sure it is correct*/ | MULT;
+tigerprogram    : indexexpr^ EOF;
+indexexpr       : indexmultexpr (PLUS^ indexmultexpr)*;
+indexmultexpr   : indexlit (MULT^ indexlit)*; 
+indexlit        : INTLIT | ID;

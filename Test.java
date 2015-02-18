@@ -17,12 +17,33 @@ public class Test {
 
             TigerParser parse = new TigerParser(tokens);
 
-            TigerParser.factor_return ret = parse.factor();
+            TigerParser.tigerprogram_return ret = parse.tigerprogram();
+
+            CommonTree ast = (CommonTree) ret.tree;
+            printTree(ast);
 
         } catch (RecognitionException re) {
             System.out.println("RE thrown");
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println("Need a file bruh");
+        }
+    }
+
+    private static void printTree(CommonTree ast) {
+        print(ast, 0);
+    }
+
+    private static void print(CommonTree tree, int level) {
+        for (int i = 0; i < level; i++) {
+            System.out.print("--");
+        }
+
+        System.out.println(" " + tree.getText());
+
+        if (tree.getChildren() != null) {
+            for (Object ie : tree.getChildren()) {
+                print((CommonTree) ie, level + 1);
+            }
         }
     }
 }

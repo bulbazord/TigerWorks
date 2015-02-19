@@ -205,8 +205,45 @@ fragment UPPERCASE
 // These are for a test only. Everything will change later
 
 tigerprogram    : indexexpr^ EOF;
+
+// Function Declaration list
+functdecllist   : functdecl^ (functdecllist)*;
+functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN BEGIN blocklist END;
+mainfunction    : VOID MAIN LPAREN RPAREN BEGIN blocklist END;
+
+
+// Block list
+blocklist       : block^ (blocktail)*;
+blocktail       : block;
+block           : BEGIN declsegment statseq END;
+
+// Declaration statements
+declsegment     : typedecllist vardecllist;
+typedecllist    : (typedecl)*;
+vardecllist     : (vardecl)*;
+
+// Param list
+paramlist       : param^ (paramlisttail)* | /*epsilon*/;
+paramlisttail   : param;
+param           : ID COLON typeid;
+typeid          : basetype | ID;
+basetype        : INTLIT | FIXEDPTLIT;
+
+// Expressions
+expr            : logicexpr (logicop^ logicexpr)*;
+logicexpr       : compareexpr (compareop^ compareexpr)*;
+compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
+addsubexpr      : exprlit (multdivop^ exprlit)*;
+exprlit         : const | value | LPAREN expr RPAREN | expr;
+
+// Constant/Value
+const           : INTLIT | FIXEDPTLIT;
+value           : ID (valuetail)*;
+valuetail       : LBRACK indexexpr RBRACK (LBRACK indexexpr RBRACK)?;
+
+// Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;
-indexmultexpr   : indexlit (MULT^ indexlit)*; 
+indexmultexpr   : indexlit (multdivop^ indexlit)*; 
 indexlit        : INTLIT | ID | FIXEDPTLIT;
 
 // Binary Operators

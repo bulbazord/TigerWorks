@@ -19,8 +19,15 @@ public class Test {
 
             TigerParser.tigerprogram_return ret = parse.tigerprogram();
 
-            CommonTree ast = (CommonTree) ret.tree;
-            printTree(ast);
+            int lexerErrors = lex.getNumberOfSyntaxErrors();
+            int parseErrors = parse.getNumberOfSyntaxErrors();
+            if (lexerErrors > 0 || parseErrors > 0) {
+                System.out.println("There were " + lexerErrors + " lex");
+                System.out.println("There were " + parseErrors + " parse");
+            } else {
+                CommonTree ast = (CommonTree) ret.tree;
+                printTree(ast);
+            }
 
         } catch (RecognitionException re) {
             System.out.println("RE thrown");
@@ -38,7 +45,7 @@ public class Test {
             System.out.print("--");
         }
 
-        System.out.println(" " + tree.getText());
+        System.out.println(" " + tree.getText() + " :: " + tree.getToken());
 
         if (tree.getChildren() != null) {
             for (Object ie : tree.getChildren()) {

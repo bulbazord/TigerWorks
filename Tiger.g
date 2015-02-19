@@ -31,32 +31,31 @@ tokens {
 }
 
 // Parser custom code
-@parser::header {
-}
-
 @parser::members {
-    /* Override to allow custom displayRecognitionError
-    @Override
-    public void reportError(RecognitionException re) {
-        displayRecognitionError(this.getTokenNames(), re);
-    }
+    public void displayRecognitionError(String[] tokens, RecognitionException re) {
+        // First, split the program into lines and identify the offending line
+        String program = re.input.toString();
+        int lineNo = re.line - 1;
+        int charNo = re.charPositionInLine;
+        String[] lines = program.split("\\n");
+        String badLine = lines[lineNo];
 
-    public void displayRecognitionError(this.getTokenNames(), re) {
+        // Display error
+        System.out.println("Line " + lineNo + ":" + charNo + ": " + badLine);
+        System.out.println(getErrorMessage(re, tokens));
+        System.out.println();
     }
-    */
 }
 
 // Lexer custom code 
-@lexer::header {
-}
-
 @lexer::members {
 
-    /*  Override this, or else it will ignore our 
-     *  overrided displayRecognitionError
+    /* Override to be able to count the number of syntax errors. 
+     * Lexer does not count the number of errors.
      */
     @Override
     public void reportError(RecognitionException re) {
+        state.syntaxErrors++;
         displayRecognitionError(this.getTokenNames(), re);
     }
 
@@ -182,7 +181,7 @@ FIXEDPTLIT
 
 // Invalid IDs start with either a digit or an underscore
 INVALID_ID
-    : ( '0'..'9' | '_' ) (UPPERCASE | LOWERCASE | '0'..'9' | '_')+;
+    : ( '0'..'9' | '_' ) (UPPERCASE | LOWERCASE | '0'..'9' | '_')*;
 
 ID  
     : ( UPPERCASE | LOWERCASE) ( UPPERCASE | LOWERCASE | '0'..'9' | '_')*;

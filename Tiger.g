@@ -35,9 +35,18 @@ tokens {
 }
 
 @parser::members {
-}
-// Lexer custom code 
+    /* Override to allow custom displayRecognitionError
+    @Override
+    public void reportError(RecognitionException re) {
+        displayRecognitionError(this.getTokenNames(), re);
+    }
 
+    public void displayRecognitionError(this.getTokenNames(), re) {
+    }
+    */
+}
+
+// Lexer custom code 
 @lexer::header {
 }
 
@@ -67,10 +76,15 @@ tokens {
         badLine.replace('\t', ' ');
 
         // Identify the malformed token
-        // Wrap quotations around the malformed token
+        // Wrap quotations around the bad part
+        String errorLine = badLine.substring(0, charNo)
+                        + "'" 
+                        + badLine.charAt(charNo)
+                        + "'"
+                        + badLine.substring(charNo + 1, badLine.length());
 
         // Report the syntactic mistake
-        System.out.println("Line " + lineNo + ":" + charNo + ": " + badLine);
+        System.out.println("Line " + lineNo + ":" + charNo + ": " + errorLine);
         System.out.println(getErrorMessage(re, tokens));
         System.out.println();
     }
@@ -147,17 +161,35 @@ RETURN
 WHITESPACE
     : ( '\t' | ' ' | '\r' | '\n' | '\u000C' )+ {$channel = HIDDEN;};
 
-ID  
-    : ( UPPERCASE | LOWERCASE) ( UPPERCASE | LOWERCASE | DIGIT | '_')*;
-
-COMMENT
-    : '/*' ( options {greedy=false;} : . )* '*/' {$channel = HIDDEN;};
+INVALID_INTLIT
+    : '0'('0'..'9')+;
 
 INTLIT
     : ((DIGIT)('0' | DIGIT)*) | '0';
 
+
+// First, match the case where there are more than 3 decimals
+// Second, match the case where the decimals are fine but has leading zeros
+// Third, match the case where there are no decimals
+INVALID_FIXEDPTLIT
+    : (INTLIT | INVALID_INTLIT)?'.'('0' | DIGIT)('0' | DIGIT)('0' | DIGIT)('0' | DIGIT)+
+    | (INVALID_INTLIT)?'.'('0'|DIGIT)(('0'|DIGIT)('0' | DIGIT)?)?
+    | (INTLIT | INVALID_INTLIT)?'.'
+    ;
+
 FIXEDPTLIT
     : (INTLIT)'.'('0' | DIGIT)(('0' | DIGIT) ('0' | DIGIT)?)?;
+
+// Invalid IDs start with either a digit or an underscore
+INVALID_ID
+    : ( '0'..'9' | '_' ) (UPPERCASE | LOWERCASE | '0'..'9' | '_')+;
+
+ID  
+    : ( UPPERCASE | LOWERCASE) ( UPPERCASE | LOWERCASE | '0'..'9' | '_')*;
+
+COMMENT
+    : '/*' ( options {greedy=false;} : . )* '*/' {$channel = HIDDEN;};
+
 
 fragment DIGIT
     : '1'..'9';
@@ -173,6 +205,12 @@ fragment UPPERCASE
 // These are for a test only. Everything will change later
 
 tigerprogram    : indexexpr^ EOF;
-indexexpr       : indexmultexpr (PLUS^ indexmultexpr)*;
+indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;
 indexmultexpr   : indexlit (MULT^ indexlit)*; 
-indexlit        : INTLIT | ID;
+indexlit        : INTLIT | ID | FIXEDPTLIT;
+
+// Binary Operators
+multdivop       : MULT | DIV;
+addsubop        : PLUS | MINUS;
+compareop       : EQ | NEQ | LESSER | LESSEREQ | GREATER | GREATEREQ;
+logicop         : AND | OR;

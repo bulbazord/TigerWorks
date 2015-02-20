@@ -40,15 +40,87 @@ tokens {
         String[] lines = program.split("\\n");
         String badLine = lines[lineNo];
 
-        // Display error
-        System.out.println("Line " + lineNo + ":" + charNo + ": " + badLine);
-        System.out.println(getErrorMessage(re, tokens));
+        String helpMessage = "";
+        if (re.token.getType() == INVALID_INTLIT) {
+            helpMessage = "Integers cannot have leading zeros";
+        } else if (re.token.getType() == INVALID_FIXEDPTLIT) {
+            helpMessage = "Invalid fixed point literal";
+        } else if (re.token.getType() == INVALID_ID) {
+            helpMessage = "Invalid identifier";
+        }
+
+        String errorMessage = getErrorMessage(re, tokens);
+        if (re instanceof MismatchedSetException) {
+            MismatchedSetException mse = (MismatchedSetException) re;
+            errorMessage = "You provided a " + 
+                            tokenNames[re.token.getType()] +
+                            ", but something else was expected";
+        } else if (re instanceof MismatchedTokenException) {
+            MismatchedTokenException mte = (MismatchedTokenException) re;
+            errorMessage = "You provided a " +
+                            tokenNames[re.token.getType()] +
+                            ", but this was expected instead: " +
+                            tokenNames[mte.expecting];
+        }
+
+        System.out.print("Line " + lineNo + ":" + charNo + ": ");
+        System.out.print(errorMessage);
+        if (helpMessage.length() > 0) {
+            System.out.print(" (" + helpMessage + ")");
+        }
+        System.out.println();
+        System.out.println("\t" + badLine);
+        System.out.print("\t");
+        for (int i = 0; i < re.charPositionInLine; i++) {
+            System.out.print(" ");
+        }
+        System.out.println("^");
         System.out.println();
     }
 }
 
 // Lexer custom code 
 @lexer::members {
+
+    /* Override specifically to be able to provide INVALID_TYPE
+     * tokens, makes parsing easier.
+     */
+    @Override
+    public Token nextToken() {
+        while (true) {
+            state.token = null;
+            state.channel = Token.DEFAULT_CHANNEL;
+            state.tokenStartCharIndex = input.index();
+            state.tokenStartCharPositionInLine = input.getCharPositionInLine();
+            state.tokenStartLine = input.getLine();
+            state.text = null;
+            if ( input.LA(1) == CharStream.EOF) {
+                return getEOFToken();
+            }
+            try {
+                mTokens();
+                if (state.token == null) {
+                    emit();
+                } else if (state.token == Token.SKIP_TOKEN) {
+                    continue;
+                }
+                return state.token;
+            } catch(RecognitionException re) {
+                reportError(re);
+                if (re instanceof NoViableAltException) {
+                    recover(re);
+                }
+                Token t = new CommonToken(input, Token.INVALID_TOKEN_TYPE,
+                                            Token.DEFAULT_CHANNEL,
+                                            state.tokenStartCharIndex,
+                                            getCharIndex() - 1);
+                t.setLine(state.tokenStartLine);
+                t.setCharPositionInLine(state.tokenStartCharPositionInLine);
+                emit(t);
+                return state.token;
+            }
+        }
+    }
 
     /* Override to be able to count the number of syntax errors. 
      * Lexer does not count the number of errors.
@@ -72,19 +144,14 @@ tokens {
         String badLine = lines[lineNo];
 
         // Next process the line to make it easier to manipulate
-        badLine.replace('\t', ' ');
-
-        // Identify the malformed token
-        // Wrap quotations around the bad part
-        String errorLine = badLine.substring(0, charNo)
-                        + "'" 
-                        + badLine.charAt(charNo)
-                        + "'"
-                        + badLine.substring(charNo + 1, badLine.length());
-
         // Report the syntactic mistake
-        System.out.println("Line " + lineNo + ":" + charNo + ": " + errorLine);
-        System.out.println(getErrorMessage(re, tokens));
+        System.out.println("Line " + lineNo + ":" + charNo + ": " + "invalid start of token");
+        System.out.println("\t" + badLine);
+        System.out.print("\t");
+        for (int i = 0; i < re.charPositionInLine; i++) {
+            System.out.print(" ");
+        }
+        System.out.println("^");
         System.out.println();
     }
 }
@@ -204,41 +271,6 @@ fragment UPPERCASE
 // These are for a test only. Everything will change later
 
 tigerprogram    : indexexpr^ EOF;
-
-// Function Declaration list
-functdecllist   : functdecl^ (functdecllist)*;
-functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN BEGIN blocklist END;
-mainfunction    : VOID MAIN LPAREN RPAREN BEGIN blocklist END;
-
-
-// Block list
-blocklist       : block^ (blocktail)*;
-blocktail       : block;
-block           : BEGIN declsegment statseq END;
-
-// Declaration statements
-declsegment     : typedecllist vardecllist;
-typedecllist    : (typedecl)*;
-vardecllist     : (vardecl)*;
-
-// Param list
-paramlist       : param^ (paramlisttail)* | /*epsilon*/;
-paramlisttail   : param;
-param           : ID COLON typeid;
-typeid          : basetype | ID;
-basetype        : INTLIT | FIXEDPTLIT;
-
-// Expressions
-expr            : logicexpr (logicop^ logicexpr)*;
-logicexpr       : compareexpr (compareop^ compareexpr)*;
-compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
-addsubexpr      : exprlit (multdivop^ exprlit)*;
-exprlit         : const | value | LPAREN expr RPAREN | expr;
-
-// Constant/Value
-const           : INTLIT | FIXEDPTLIT;
-value           : ID (valuetail)*;
-valuetail       : LBRACK indexexpr RBRACK (LBRACK indexexpr RBRACK)?;
 
 // Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;

@@ -308,13 +308,26 @@ fragment UPPERCASE
 
 tigerprogram    : typedecllist functdecllist mainfunction EOF;
 
-// Function Declaration list and main
-mainfunction    : VOID_MAIN LPAREN RPAREN BEGIN typedecllist functdecllist blocklist END;
+// typedecllist stuff
+typedecllist    : (typedecl)*;
+typedecl        : TYPE ID EQ type SEMI;
+type            : basetype | ARRAY LBRACK INTLIT RBRACK (LBRACK INTLIT RBRACK)? OF basetype;
+basetype        : INT | FIXEDPT;
+
+//Function declaration list stuff
 functdecllist   : (functdecl)*;
 functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN BEGIN blocklist END;
-
-// Return type
 rettype         : VOID | typeid;
+typeid          : basetype | ID;
+
+// Paramater list stuff
+paramlist       : (param (COMMA param)*)?;
+param           : ID COLON typeid;
+
+// Block list stuff
+
+// Function Declaration list and main
+mainfunction    : VOID_MAIN LPAREN RPAREN BEGIN typedecllist functdecllist blocklist END;
 
 // Block list
 blocklist       : block^ (blocktail)*;
@@ -323,19 +336,8 @@ block           : BEGIN declsegment statseq END;
 
 // Declaration statements
 declsegment     : typedecllist vardecllist;
-typedecllist    : (typedecl)*;
 vardecllist     : (vardecl)*;
 vardecl         : VAR idlist COLON typeid optionalinit SEMI;
-typedecl        : TYPE ID EQ type SEMI;
-// Type statements
-type            : basetype | ARRAY LBRACK INTLIT RBRACK (LBRACK INTLIT RBRACK)? OF basetype;
-
-// Param list
-paramlist       : (param (param)*)?;
-paramlisttail   : param;
-param           : ID COLON typeid;
-typeid          : basetype | ID;
-basetype        : INT | FIXEDPT;
 
 // idlist and optionalinit and optprefix
 idlist          : id (COMMA id)*;

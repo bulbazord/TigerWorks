@@ -4,6 +4,7 @@ grammar Tiger;
 options {
     k = 1;
     output = AST;
+    backtrack = no;
 }
 
 tokens {
@@ -205,6 +206,9 @@ VOID
 MAIN
     : 'main';
 
+VOID_MAIN
+    : 'void main';
+
 TYPE
     : 'type';
 
@@ -302,11 +306,11 @@ fragment UPPERCASE
 // Parser rules
 // These are for a test only. Everything will change later
 
-tigerprogram    : mainfunction EOF;
+tigerprogram    : typedecllist functdecllist mainfunction EOF;
 
 // Function Declaration list and main
-mainfunction    : VOID MAIN LPAREN RPAREN BEGIN typedecllist functdecllist blocklist END;
-functdecllist   : (functdecl^ (functdecllist)*)?;
+mainfunction    : VOID_MAIN LPAREN RPAREN BEGIN typedecllist functdecllist blocklist END;
+functdecllist   : (functdecl)*;
 functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN BEGIN blocklist END;
 
 // Return type
@@ -327,14 +331,15 @@ typedecl        : TYPE ID EQ type SEMI;
 type            : basetype | ARRAY LBRACK INTLIT RBRACK (LBRACK INTLIT RBRACK)? OF basetype;
 
 // Param list
-paramlist       : (param^ (paramlisttail)*)?;
+paramlist       : (param (param)*)?;
 paramlisttail   : param;
 param           : ID COLON typeid;
 typeid          : basetype | ID;
-basetype        : INTLIT | FIXEDPTLIT;
+basetype        : INT | FIXEDPT;
 
 // idlist and optionalinit and optprefix
-idlist          : ID (COMMA idlist)*;
+idlist          : id (COMMA id)*;
+id              : ID;
 optionalinit    : (ASSIGN const)?;
 
 // Statseq and Stat and optprefix
@@ -360,7 +365,7 @@ exprlisttail    : expr;
 // Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;
 indexmultexpr   : indexlit (multdivop^ indexlit)*; 
-indexlit        : INTLIT | ID | FIXEDPTLIT;
+indexlit        : INTLIT | ID | FIXEDPTLIT | LPAREN indexexpr RPAREN;
 
 // Binary Operators
 multdivop       : MULT | DIV;

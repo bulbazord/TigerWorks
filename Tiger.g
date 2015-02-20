@@ -204,13 +204,15 @@ fragment UPPERCASE
 // Parser rules
 // These are for a test only. Everything will change later
 
-tigerprogram    : indexexpr^ EOF;
+tigerprogram    : typedecllist functdecllist mainfunction EOF;
 
 // Function Declaration list
-functdecllist   : functdecl^ (functdecllist)*;
+functdecllist   : (functdecl^ (functdecllist)*)?;
 functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN BEGIN blocklist END;
 mainfunction    : VOID MAIN LPAREN RPAREN BEGIN blocklist END;
 
+// Return type
+rettype         : VOID | typeid;
 
 // Block list
 blocklist       : block^ (blocktail)*;
@@ -221,25 +223,41 @@ block           : BEGIN declsegment statseq END;
 declsegment     : typedecllist vardecllist;
 typedecllist    : (typedecl)*;
 vardecllist     : (vardecl)*;
+vardecl         : VAR idlist COLON typeid optionalinit SEMI;
+typedecl        : TYPE ID EQ type SEMI;
+// Type statements
+type            : basetype | ARRAY LBRACK INTLIT RBRACK (LBRACK INTLIT RBRACK)? OF basetype;
 
 // Param list
-paramlist       : param^ (paramlisttail)* | /*epsilon*/;
+paramlist       : (param^ (paramlisttail)*)?;
 paramlisttail   : param;
 param           : ID COLON typeid;
 typeid          : basetype | ID;
 basetype        : INTLIT | FIXEDPTLIT;
 
+// idlist and optionalinit and optprefix
+idlist          : ID (COMMA idlist)*;
+optionalinit    : (ASSIGN const)?;
+
+// Statseq and Stat and optprefix
+statseq         : stat (statseq)*;
+stat            : value ASSIGN expr SEMI | IF expr THEN statseq ENDIF SEMI | IF expr THEN statseq ELSE statseq ENDIF SEMI | WHILE expr DO statseq ENDDO SEMI | FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI | optprefix ID LPAREN exprlist RPAREN SEMI | BREAK SEMI | RETURN expr SEMI | block;
+optprefix       : (value ASSIGN)?;
 // Expressions
 expr            : logicexpr (logicop^ logicexpr)*;
 logicexpr       : compareexpr (compareop^ compareexpr)*;
 compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
 addsubexpr      : exprlit (multdivop^ exprlit)*;
-exprlit         : const | value | LPAREN expr RPAREN | expr;
+exprlit         : const | value | LPAREN expr RPAREN;
 
 // Constant/Value
 const           : INTLIT | FIXEDPTLIT;
-value           : ID (valuetail)*;
-valuetail       : LBRACK indexexpr RBRACK (LBRACK indexexpr RBRACK)?;
+value           : ID valuetail;
+valuetail       : (LBRACK indexexpr RBRACK (LBRACK indexexpr RBRACK)?)?;
+
+// Expression list
+exprlist        : (expr exprlisttail)*;
+exprlisttail    : expr;
 
 // Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;

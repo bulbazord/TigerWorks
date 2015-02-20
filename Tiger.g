@@ -304,7 +304,6 @@ fragment UPPERCASE
 
 tigerprogram    : mainfunction EOF;
 
-<<<<<<< HEAD
 // Function Declaration list and main
 mainfunction    : VOID MAIN LPAREN RPAREN BEGIN typedecllist functdecllist blocklist END;
 functdecllist   : (functdecl^ (functdecllist)*)?;
@@ -358,8 +357,6 @@ valuetail       : (LBRACK indexexpr RBRACK (LBRACK indexexpr RBRACK)?)?;
 exprlist        : (expr exprlisttail)*;
 exprlisttail    : expr;
 
-=======
->>>>>>> errorhandling
 // Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;
 indexmultexpr   : indexlit (multdivop^ indexlit)*; 

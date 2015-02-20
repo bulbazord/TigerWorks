@@ -32,6 +32,7 @@ public class Test {
         } catch (RecognitionException re) {
             System.out.println("RE thrown");
         } catch (Exception e) {
+            e.printStackTrace();
             System.out.println("Need a file bruh");
         }
     }

@@ -22,8 +22,8 @@ public class Test {
             int lexerErrors = lex.getNumberOfSyntaxErrors();
             int parseErrors = parse.getNumberOfSyntaxErrors();
             if (lexerErrors > 0 || parseErrors > 0) {
-                System.out.println("There were " + lexerErrors + " lex");
-                System.out.println("There were " + parseErrors + " parse");
+                System.out.println("There were " + lexerErrors + " lex errors");
+                System.out.println("There were " + parseErrors + " parse errors");
             } else {
                 CommonTree ast = (CommonTree) ret.tree;
                 printTree(ast);
@@ -32,6 +32,7 @@ public class Test {
         } catch (RecognitionException re) {
             System.out.println("RE thrown");
         } catch (Exception e) {
+            e.printStackTrace();
             System.out.println("Need a file bruh");
         }
     }

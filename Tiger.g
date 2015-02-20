@@ -31,6 +31,7 @@ tokens {
 }
 
 // Parser custom code
+
 @parser::members {
     public void displayRecognitionError(String[] tokens, RecognitionException re) {
         // First, split the program into lines and identify the offending line
@@ -40,9 +41,60 @@ tokens {
         String[] lines = program.split("\\n");
         String badLine = lines[lineNo];
 
-        // Display error
-        System.out.println("Line " + lineNo + ":" + charNo + ": " + badLine);
-        System.out.println(getErrorMessage(re, tokens));
+        // Craft a potentially helpful message
+        String helpMessage = "";
+        if (re.token.getType() == INVALID_INTLIT) {
+            helpMessage = "Integers cannot have leading zeros";
+        } else if (re.token.getType() == INVALID_FIXEDPTLIT) {
+            helpMessage = "Invalid fixed point literal";
+        } else if (re.token.getType() == INVALID_ID) {
+            helpMessage = "Invalid identifier";
+        }
+
+        // Craft the error message
+        String errorMessage = getErrorMessage(re, tokens);
+        // Which bad token did they provide?
+        String badToken = (re.token.getType() >= 0) ? tokenNames[re.token.getType()] : "EOF";
+
+        // If multiple things can be matched
+        if (re instanceof MismatchedSetException) {
+            MismatchedSetException mse = (MismatchedSetException) re;
+            errorMessage = "You provided a " + 
+                            badToken + 
+                            ", but something else was expected";
+
+        // If only one thing could have been matched
+        } else if (re instanceof MismatchedTokenException) {
+            MismatchedTokenException mte = (MismatchedTokenException) re;
+            String expected = (mte.expecting >= 0) ? tokenNames[mte.expecting] : "EOF";
+            errorMessage = "You provided a " +
+                            badToken +
+                            ", but this was expected instead: " +
+                            expected;
+        }
+
+        // Wrap quotes around the incorrect token
+        int begin = re.token.getCharPositionInLine();
+        int end = begin + re.token.getText().length();
+        String errorLine = badLine.substring(0, begin) +
+                            "\"" +
+                            re.token.getText() + 
+                            "\"" + 
+                            badLine.substring(end, badLine.length());
+
+        // Print out the error message
+        System.out.print("Line " + lineNo + ":" + charNo + ": ");
+        System.out.print(errorMessage);
+        if (helpMessage.length() > 0) {
+            System.out.print(" (" + helpMessage + ")");
+        }
+        System.out.println();
+        System.out.println("\t" + errorLine);
+        System.out.print("\t");
+        for (int i = 0; i < re.charPositionInLine + 1; i++) {
+            System.out.print(" ");
+        }
+        System.out.println("^");
         System.out.println();
     }
 }
@@ -50,8 +102,54 @@ tokens {
 // Lexer custom code 
 @lexer::members {
 
+    /* Override specifically to be able to provide INVALID_TYPE
+     * tokens, makes parsing easier.
+     */
+    @Override
+    public Token nextToken() {
+        while (true) {
+            state.token = null;
+            state.channel = Token.DEFAULT_CHANNEL;
+            state.tokenStartCharIndex = input.index();
+            state.tokenStartCharPositionInLine = input.getCharPositionInLine();
+            state.tokenStartLine = input.getLine();
+            state.text = null;
+            if ( input.LA(1) == CharStream.EOF) {
+                return getEOFToken();
+            }
+            try {
+                mTokens();
+                if (state.token == null) {
+                    emit();
+                } else if (state.token == Token.SKIP_TOKEN) {
+                    continue;
+                }
+                return state.token;
+            } catch(RecognitionException re) {
+                reportError(re);
+                if (re instanceof NoViableAltException) {
+                    recover(re);
+                }
+                /* Create a custom token specifically tailored for the 
+                    given input. Do NOT use Token.INVALID_TOKEN, as it
+                    does not contain the information we want. To add
+                    the information to it that we want, it would be
+                    equivalent to doing the below anyway.
+                 */
+                Token t = new CommonToken(input, Token.INVALID_TOKEN_TYPE,
+                                            Token.DEFAULT_CHANNEL,
+                                            state.tokenStartCharIndex,
+                                            getCharIndex() - 1);
+                t.setLine(state.tokenStartLine);
+                t.setCharPositionInLine(state.tokenStartCharPositionInLine);
+                emit(t);
+                return state.token;
+            }
+        }
+    }
+
     /* Override to be able to count the number of syntax errors. 
-     * Lexer does not count the number of errors.
+     * Lexer's reportError does not count the number of errors.
      */
     @Override
     public void reportError(RecognitionException re) {
@@ -71,25 +169,26 @@ tokens {
         String[] lines = program.split("\\n");
         String badLine = lines[lineNo];
 
-        // Next process the line to make it easier to manipulate
-        badLine.replace('\t', ' ');
-
-        // Identify the malformed token
-        // Wrap quotations around the bad part
-        String errorLine = badLine.substring(0, charNo)
-                        + "'" 
-                        + badLine.charAt(charNo)
-                        + "'"
-                        + badLine.substring(charNo + 1, badLine.length());
+        // Insert quotes around the malformed token
+        String errorLine = badLine.substring(0, charNo) + 
+                            "\"" +
+                            badLine.charAt(charNo) +
+                            "\"" +
+                            badLine.substring(charNo + 1, badLine.length());
 
         // Report the syntactic mistake
-        System.out.println("Line " + lineNo + ":" + charNo + ": " + errorLine);
-        System.out.println(getErrorMessage(re, tokens));
+        System.out.println("Line " + lineNo + ":" + charNo + ": " + "invalid start of token");
+        System.out.println("\t" + errorLine);
+        System.out.print("\t");
+        for (int i = 0; i < re.charPositionInLine + 1; i++) {
+            System.out.print(" ");
+        }
+        System.out.println("^");
         System.out.println();
     }
 }
 
-// Finish filling in other keywords and other lexer rules
+// Keywords and other lexer rules
 
 FUNCTION
     : 'function';
@@ -205,6 +304,7 @@ fragment UPPERCASE
 
 tigerprogram    : mainfunction EOF;
 
+<<<<<<< HEAD
 // Function Declaration list and main
 mainfunction    : VOID MAIN LPAREN RPAREN BEGIN typedecllist functdecllist blocklist END;
 functdecllist   : (functdecl^ (functdecllist)*)?;
@@ -258,6 +358,8 @@ valuetail       : (LBRACK indexexpr RBRACK (LBRACK indexexpr RBRACK)?)?;
 exprlist        : (expr exprlisttail)*;
 exprlisttail    : expr;
 
+=======
+>>>>>>> errorhandling
 // Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;
 indexmultexpr   : indexlit (multdivop^ indexlit)*; 

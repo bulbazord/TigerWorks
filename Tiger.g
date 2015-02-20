@@ -203,12 +203,12 @@ fragment UPPERCASE
 // Parser rules
 // These are for a test only. Everything will change later
 
-tigerprogram    : typedecllist functdecllist mainfunction EOF;
+tigerprogram    : mainfunction EOF;
 
-// Function Declaration list
+// Function Declaration list and main
+mainfunction    : VOID MAIN LPAREN RPAREN BEGIN typedecllist functdecllist blocklist END;
 functdecllist   : (functdecl^ (functdecllist)*)?;
 functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN BEGIN blocklist END;
-mainfunction    : VOID MAIN LPAREN RPAREN BEGIN blocklist END;
 
 // Return type
 rettype         : VOID | typeid;

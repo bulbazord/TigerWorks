@@ -1,0 +1,66 @@
+type SquareInt = array[5][5] of int;
+type SquareFixed = array[5][5] of fixedpt;
+
+SquareInt function SquareMultiply(a : SquareInt, b : SquareInt)
+begin
+  begin
+    var size, length, width : int := 5;
+    var i, j, k : int := 0;
+    var product : SquareInt := 0;
+    var num : int;
+    for i := 0 to width do 
+      for j := 0 to length do
+        num := 0;
+        for k := 0 to size do
+          num := num + a[i][k] * b[k][j];
+        enddo;
+        product[i][j] := num;
+      enddo;
+    enddo;
+  end;
+end;
+
+SquareInt function MakeSquareInt(a : int, b : int, c : int, d : int, e : int) 
+begin
+  begin
+    var result : SquareInt;
+    var size : int := 5;
+    var i : int;
+    for i := 0 to size do
+      result[i][0] = a;
+      result[i][1] = b;
+      result[i][2] = c;
+      result[i][3] = d;
+      result[i][4] = e;
+    enddo;
+  end;
+end;
+
+void function PrintMatrixI(m : SquareInt) 
+begin
+  begin
+    var i, j : int;
+    var size : index := 5;
+    for i := 0 to size do 
+      for j := 0 to size do
+        printi(m[i][j])
+      enddo;
+    enddo;
+  end;
+end;
+
+
+void main()
+begin
+  begin
+    var matrix_1 : SquareInt;
+    var matrix_2 : SquareInt;
+    var matrix_C : SquareInt;
+
+    matrix_1 := MakeSquare(1, 2, 3, 4, 5);
+    matrix_2 := MakeSquare(6, 7, 8, 9, 10);
+    matrix_C := SquareMultiply(matrix_1, matrix_2);
+
+    PrintMatrixI(matrix_C);
+  end;
+end;

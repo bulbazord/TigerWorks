@@ -330,8 +330,7 @@ param           : ID COLON typeid;
 mainfunction    : VOID_MAIN LPAREN RPAREN BEGIN typedecllist functdecllist blocklist END;
 
 // Block list
-blocklist       : block^ (blocktail)*;
-blocktail       : block;
+blocklist       : (block)+;
 block           : BEGIN declsegment statseq END;
 
 // Declaration statements
@@ -340,15 +339,24 @@ vardecllist     : (vardecl)*;
 vardecl         : VAR idlist COLON typeid optionalinit SEMI;
 
 // idlist and optionalinit and optprefix
-idlist          : id (COMMA id)*;
-id              : ID;
+idlist          : ID (COMMA ID)*;
 optionalinit    : (ASSIGN const)?;
 
 // Statseq and Stat and optprefix
+
 statseq         : stat (statseq)*;
-stat            : value ASSIGN expr SEMI | IF expr THEN statseq ENDIF SEMI | IF expr THEN statseq ELSE statseq ENDIF SEMI | WHILE expr DO statseq ENDDO SEMI | FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI | optprefix ID LPAREN exprlist RPAREN SEMI | BREAK SEMI | RETURN expr SEMI | block;
+assignrule      : value ASSIGN expr SEMI;
+ifthen          : IF expr THEN statseq (ELSE statseq)? ENDIF SEMI;
+whileloop       : WHILE expr DO statseq ENDDO SEMI;
+forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI;
+optprerule      : optprefix ID LPAREN exprlist RPAREN SEMI;
+return          : RETURN expr SEMI;
+break           : BREAK SEMI;
+
+stat            : assignrule | ifthen | whileloop | forloop | optprerule | return | break | block;
 optprefix       : (value ASSIGN)?;
 // Expressions
+
 expr            : logicexpr (logicop^ logicexpr)*;
 logicexpr       : compareexpr (compareop^ compareexpr)*;
 compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
@@ -361,8 +369,7 @@ value           : ID valuetail;
 valuetail       : (LBRACK indexexpr RBRACK (LBRACK indexexpr RBRACK)?)?;
 
 // Expression list
-exprlist        : (expr exprlisttail)*;
-exprlisttail    : expr;
+exprlist        : (expr (COMMA expr)*)?;
 
 // Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;

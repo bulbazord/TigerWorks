@@ -46,7 +46,7 @@ public class Test {
             System.out.print("--");
         }
 
-        System.out.println(" " + tree.getText() + " :: " + tree.getToken());
+        System.out.println(" " + tree.getText()); 
 
         if (tree.getChildren() != null) {
             for (Object ie : tree.getChildren()) {

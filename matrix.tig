@@ -27,11 +27,11 @@ begin
     var size : int := 5;
     var i : int;
     for i := 0 to size do
-      result[i][0] = a;
-      result[i][1] = b;
-      result[i][2] = c;
-      result[i][3] = d;
-      result[i][4] = e;
+      result[i][0] := a;
+      result[i][1] := b;
+      result[i][2] := c;
+      result[i][3] := d;
+      result[i][4] := e;
     enddo;
   end;
 end;
@@ -43,7 +43,7 @@ begin
     var size : index := 5;
     for i := 0 to size do 
       for j := 0 to size do
-        printi(m[i][j])
+        printi(m[i][j]);
       enddo;
     enddo;
   end;

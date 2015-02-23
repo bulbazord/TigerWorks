@@ -203,6 +203,9 @@ END
 VOID
     : 'void';
 
+VOID_FUNCTION
+    : 'void function';
+
 MAIN
     : 'main';
 
@@ -310,19 +313,18 @@ tigerprogram    : typedecllist functdecllist mainfunction EOF!;
 
 // typedecllist stuff
 typedecllist    : (typedecl)*;
-typedecl        : TYPE ID EQ type SEMI!;
+typedecl        : TYPE^ ID EQ type SEMI!;
 type            : basetype | ARRAY LBRACK! INTLIT RBRACK! (LBRACK! INTLIT RBRACK!)? OF! basetype;
 basetype        : INT | FIXEDPT;
 
 //Function declaration list stuff
 functdecllist   : (functdecl)*;
-functdecl       : rettype FUNCTION ID LPAREN! paramlist RPAREN! blocklist ;
-rettype         : VOID | typeid;
+functdecl       : (VOID_FUNCTION^ | typeid FUNCTION^) ID LPAREN! paramlist RPAREN! blocklist ;
 typeid          : basetype | ID;
 
 // Paramater list stuff
 paramlist       : (param (COMMA! param)*)?;
-param           : ID COLON! typeid;
+param           : ID COLON! typeid^;
 
 // Block list stuff
 
@@ -357,14 +359,14 @@ optionalinit    : (ASSIGN tiger_const)?;
  */
 idstatrule      : ID^ (valuetail ASSIGN^ expr | funccalltail) SEMI!;
 
-funccalltail    : LPAREN! exprlist RPAREN! SEMI!;
+funccalltail    : LPAREN! exprlist RPAREN!;
 
 statseq         : (stat)+;
-ifthen          : IF expr THEN statseq (ELSE statseq)? ENDIF SEMI!;
-whileloop       : WHILE expr DO statseq ENDDO SEMI!;
-forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI!;
-returnstatrule  : RETURN expr SEMI!;
-breakstatrule   : BREAK SEMI!;
+ifthen          : IF^ expr THEN statseq (ELSE statseq)? ENDIF! SEMI!;
+whileloop       : WHILE^ expr DO statseq ENDDO! SEMI!;
+forloop         : FOR^ ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO! SEMI!;
+returnstatrule  : RETURN^ expr SEMI!;
+breakstatrule   : BREAK^ SEMI!;
 stat            : idstatrule | ifthen | whileloop | forloop | returnstatrule | breakstatrule | block;
 
 // Expressions
@@ -373,7 +375,7 @@ expr            : logicexpr (logicop^ logicexpr)*;
 logicexpr       : compareexpr (compareop^ compareexpr)*;
 compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
 addsubexpr      : exprlit (multdivop^ exprlit)*;
-exprlit         : tiger_const | ID (valuetail | funccalltail) | LPAREN! expr RPAREN!;
+exprlit         : tiger_const | ID^ (valuetail | funccalltail) | LPAREN! expr RPAREN!;
 
 // Constant/Value
 tiger_const     : INTLIT | FIXEDPTLIT;

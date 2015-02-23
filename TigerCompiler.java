@@ -1,13 +1,23 @@
 import org.antlr.runtime.*;
 import org.antlr.runtime.tree.*;
 import org.antlr.stringtemplate.*;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
-import java.nio.file.Files;
 
-public class Test {
+import java.io.IOException;
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+public class TigerCompiler {
     public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.println("Please provide a file, and only a file.");
+            System.exit(0);
+        }
         try {
             byte[] encoded = Files.readAllBytes(Paths.get(args[0]));
             String program = new String(encoded, StandardCharsets.UTF_8);
@@ -24,18 +34,27 @@ public class Test {
                 System.out.println("There were " + lexerErrors + " lex errors");
                 System.out.println("There were " + parseErrors + " parse errors");
             } else {
+                System.out.println("Successful parse!");
                 CommonTree ast = (CommonTree) ret.tree;
                 DOTTreeGenerator gen = new DOTTreeGenerator();
                 StringTemplate st = gen.toDOT(ast);
-                System.out.println(st);
-                //printTree(ast);
+                try {
+                    Writer writer = new BufferedWriter(
+                                        new OutputStreamWriter(
+                                        new FileOutputStream("AST.dot"), "utf-8")); 
+                    writer.write(st.toString());
+                    writer.close();
+                } catch(IOException ex) {
+                    System.out.println("There was an error writing to file");
+                }
+
             }
 
         } catch (RecognitionException re) {
-            System.out.println("RE thrown");
+            System.out.println("A recognition exception has been thrown");
+            System.out.println("This should never happen!");
         } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Need a file bruh");
+            System.out.println("An error has occured");
         }
     }
 

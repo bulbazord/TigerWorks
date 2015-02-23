@@ -316,7 +316,7 @@ basetype        : INT | FIXEDPT;
 
 //Function declaration list stuff
 functdecllist   : (functdecl)*;
-functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN BEGIN blocklist END;
+functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN blocklist ;
 rettype         : VOID | typeid;
 typeid          : basetype | ID;
 
@@ -327,7 +327,7 @@ param           : ID COLON typeid;
 // Block list stuff
 
 // Function Declaration list and main
-mainfunction    : VOID_MAIN LPAREN RPAREN BEGIN typedecllist functdecllist blocklist END;
+mainfunction    : VOID_MAIN LPAREN RPAREN blocklist SEMI;
 
 // Block list
 blocklist       : (block)+;
@@ -340,7 +340,7 @@ vardecl         : VAR idlist COLON typeid optionalinit SEMI;
 
 // idlist and optionalinit and optprefix
 idlist          : ID (COMMA ID)*;
-optionalinit    : (ASSIGN const)?;
+optionalinit    : (ASSIGN tiger_const)?;
 
 // Statseq and Stat and optprefix
 
@@ -363,9 +363,9 @@ statseq         : (stat)+;
 ifthen          : IF expr THEN statseq (ELSE statseq)? ENDIF SEMI;
 whileloop       : WHILE expr DO statseq ENDDO SEMI;
 forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI;
-return          : RETURN expr SEMI;
-break           : BREAK SEMI;
-stat            : idstatrule | ifthen | whileloop | forloop | return | break | block;
+returnstatrule  : RETURN expr SEMI;
+breakstatrule   : BREAK SEMI;
+stat            : idstatrule | ifthen | whileloop | forloop | returnstatrule | breakstatrule | block;
 
 // Expressions
 
@@ -373,10 +373,10 @@ expr            : logicexpr (logicop^ logicexpr)*;
 logicexpr       : compareexpr (compareop^ compareexpr)*;
 compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
 addsubexpr      : exprlit (multdivop^ exprlit)*;
-exprlit         : const | ID (valuetail | funccalltail) | LPAREN expr RPAREN;
+exprlit         : tiger_const | ID (valuetail | funccalltail) | LPAREN expr RPAREN;
 
 // Constant/Value
-const           : INTLIT | FIXEDPTLIT;
+tiger_const     : INTLIT | FIXEDPTLIT;
 value           : ID valuetail;
 valuetail       : (LBRACK indexexpr RBRACK (LBRACK indexexpr RBRACK)?)?;
 

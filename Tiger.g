@@ -306,40 +306,40 @@ fragment UPPERCASE
 // Parser rules
 // These are for a test only. Everything will change later
 
-tigerprogram    : typedecllist functdecllist mainfunction EOF;
+tigerprogram    : typedecllist functdecllist mainfunction EOF!;
 
 // typedecllist stuff
 typedecllist    : (typedecl)*;
-typedecl        : TYPE ID EQ type SEMI;
-type            : basetype | ARRAY LBRACK INTLIT RBRACK (LBRACK INTLIT RBRACK)? OF basetype;
+typedecl        : TYPE ID EQ type SEMI!;
+type            : basetype | ARRAY LBRACK! INTLIT RBRACK! (LBRACK! INTLIT RBRACK!)? OF! basetype;
 basetype        : INT | FIXEDPT;
 
 //Function declaration list stuff
 functdecllist   : (functdecl)*;
-functdecl       : rettype FUNCTION ID LPAREN paramlist RPAREN blocklist ;
+functdecl       : rettype FUNCTION ID LPAREN! paramlist RPAREN! blocklist ;
 rettype         : VOID | typeid;
 typeid          : basetype | ID;
 
 // Paramater list stuff
-paramlist       : (param (COMMA param)*)?;
-param           : ID COLON typeid;
+paramlist       : (param (COMMA! param)*)?;
+param           : ID COLON! typeid;
 
 // Block list stuff
 
 // Function Declaration list and main
-mainfunction    : VOID_MAIN LPAREN RPAREN blocklist SEMI;
+mainfunction    : VOID_MAIN^ LPAREN! RPAREN! BEGIN! blocklist END! SEMI!;
 
 // Block list
 blocklist       : (block)+;
-block           : BEGIN declsegment statseq END;
+block           : BEGIN! declsegment statseq END! SEMI!;
 
 // Declaration statements
 declsegment     : typedecllist vardecllist;
 vardecllist     : (vardecl)*;
-vardecl         : VAR idlist COLON typeid optionalinit SEMI;
+vardecl         : VAR! idlist COLON! typeid^ optionalinit SEMI!;
 
 // idlist and optionalinit and optprefix
-idlist          : ID (COMMA ID)*;
+idlist          : ID (COMMA! ID)*;
 optionalinit    : (ASSIGN tiger_const)?;
 
 // Statseq and Stat and optprefix
@@ -355,16 +355,16 @@ optionalinit    : (ASSIGN tiger_const)?;
         a function tail.
 
  */
-idstatrule      : ID (valuetail ASSIGN expr | funccalltail) SEMI;
+idstatrule      : ID^ (valuetail ASSIGN^ expr | funccalltail) SEMI!;
 
-funccalltail    : LPAREN exprlist RPAREN SEMI;
+funccalltail    : LPAREN! exprlist RPAREN! SEMI!;
 
 statseq         : (stat)+;
-ifthen          : IF expr THEN statseq (ELSE statseq)? ENDIF SEMI;
-whileloop       : WHILE expr DO statseq ENDDO SEMI;
-forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI;
-returnstatrule  : RETURN expr SEMI;
-breakstatrule   : BREAK SEMI;
+ifthen          : IF expr THEN statseq (ELSE statseq)? ENDIF SEMI!;
+whileloop       : WHILE expr DO statseq ENDDO SEMI!;
+forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI!;
+returnstatrule  : RETURN expr SEMI!;
+breakstatrule   : BREAK SEMI!;
 stat            : idstatrule | ifthen | whileloop | forloop | returnstatrule | breakstatrule | block;
 
 // Expressions
@@ -373,20 +373,20 @@ expr            : logicexpr (logicop^ logicexpr)*;
 logicexpr       : compareexpr (compareop^ compareexpr)*;
 compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
 addsubexpr      : exprlit (multdivop^ exprlit)*;
-exprlit         : tiger_const | ID (valuetail | funccalltail) | LPAREN expr RPAREN;
+exprlit         : tiger_const | ID (valuetail | funccalltail) | LPAREN! expr RPAREN!;
 
 // Constant/Value
 tiger_const     : INTLIT | FIXEDPTLIT;
 value           : ID valuetail;
-valuetail       : (LBRACK indexexpr RBRACK (LBRACK indexexpr RBRACK)?)?;
+valuetail       : (LBRACK! indexexpr RBRACK! (LBRACK! indexexpr RBRACK!)?)?;
 
 // Expression list
-exprlist        : (expr (COMMA expr)*)?;
+exprlist        : (expr (COMMA! expr)*)?;
 
 // Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;
 indexmultexpr   : indexlit (multdivop^ indexlit)*; 
-indexlit        : INTLIT | ID | FIXEDPTLIT | LPAREN indexexpr RPAREN;
+indexlit        : INTLIT | ID | FIXEDPTLIT | LPAREN! indexexpr RPAREN!;
 
 // Binary Operators
 multdivop       : MULT | DIV;

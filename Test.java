@@ -1,7 +1,6 @@
 import org.antlr.runtime.*;
-import org.antlr.runtime.tree.CommonTree;
-import java.util.ArrayList;
-import java.util.List;
+import org.antlr.runtime.tree.*;
+import org.antlr.stringtemplate.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -26,7 +25,10 @@ public class Test {
                 System.out.println("There were " + parseErrors + " parse errors");
             } else {
                 CommonTree ast = (CommonTree) ret.tree;
-                printTree(ast);
+                DOTTreeGenerator gen = new DOTTreeGenerator();
+                StringTemplate st = gen.toDOT(ast);
+                System.out.println(st);
+                //printTree(ast);
             }
 
         } catch (RecognitionException re) {

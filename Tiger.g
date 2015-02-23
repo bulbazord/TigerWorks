@@ -344,24 +344,36 @@ optionalinit    : (ASSIGN const)?;
 
 // Statseq and Stat and optprefix
 
-statseq         : stat (statseq)*;
-assignrule      : value ASSIGN expr SEMI;
+/*  ID initial situations:
+    It either is an assign expression, or it's a function call.
+
+    (*) When it's an assign expression, it must be followed by
+        a valuetail, an ASSIGN, and an expression 
+        (which could be a function call).
+
+    (*) When it's a function call, it is just followed by
+        a function tail.
+
+ */
+idstatrule      : ID (valuetail ASSIGN expr | funccalltail) SEMI;
+
+funccalltail    : LPAREN exprlist RPAREN SEMI;
+
+statseq         : (stat)+;
 ifthen          : IF expr THEN statseq (ELSE statseq)? ENDIF SEMI;
 whileloop       : WHILE expr DO statseq ENDDO SEMI;
 forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI;
-optprerule      : optprefix ID LPAREN exprlist RPAREN SEMI;
 return          : RETURN expr SEMI;
 break           : BREAK SEMI;
+stat            : idstatrule | ifthen | whileloop | forloop | return | break | block;
 
-stat            : assignrule | ifthen | whileloop | forloop | optprerule | return | break | block;
-optprefix       : (value ASSIGN)?;
 // Expressions
 
 expr            : logicexpr (logicop^ logicexpr)*;
 logicexpr       : compareexpr (compareop^ compareexpr)*;
 compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
 addsubexpr      : exprlit (multdivop^ exprlit)*;
-exprlit         : const | value | LPAREN expr RPAREN;
+exprlit         : const | ID (valuetail | funccalltail) | LPAREN expr RPAREN;
 
 // Constant/Value
 const           : INTLIT | FIXEDPTLIT;

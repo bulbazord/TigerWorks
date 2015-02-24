@@ -31,8 +31,9 @@ public class TigerCompiler {
             int lexerErrors = lex.getNumberOfSyntaxErrors();
             int parseErrors = parse.getNumberOfSyntaxErrors();
             if (lexerErrors > 0 || parseErrors > 0) {
-                System.out.println("There were " + lexerErrors + " lex errors");
-                System.out.println("There were " + parseErrors + " parse errors");
+                System.out.println("There were " + 
+                                    (lexerErrors+parseErrors) +
+                                    " errors total");
             } else {
                 System.out.println("Successful parse!");
                 CommonTree ast = (CommonTree) ret.tree;

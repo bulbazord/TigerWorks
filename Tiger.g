@@ -72,6 +72,10 @@ tokens {
                             badToken +
                             ", but this was expected instead: " +
                             expected;
+        } else if (re instanceof NoViableAltException) {
+            errorMessage = "It does not make sense for this token " +
+                            "to be in this spot.";
+
         }
 
         // Wrap quotes around the incorrect token

@@ -1,0 +1,75 @@
+type arr = array [128] of int;
+arr function mergesort(list : arr, size : int)
+begin
+	begin
+	var X, Y, ret : arr;
+	var sizeX, sizeY, temp, temp2 : int;
+	var i : int := 0;
+	sizeX := size / 2;
+	sizeY := size - (size/ 2);
+	temp := size / 2 + 1;
+	for i := 1 to sizeX do
+		X[i] := list[i];
+	enddo;
+	temp2 := size / 2;
+	for i := temp to size do
+		Y[i - temp2] := list[i];
+	enddo;
+	X := mergesort(X, sizeX);
+	Y := mergesort(Y, sizeY);
+	ret := merge(X, Y, sizeX, sizeY);
+	return ret;
+	end;
+end;
+
+arr function merge(list1 : arr, list2 : arr, s1 : int, s2 : int)
+begin
+	begin
+	var a, b, c : int := 1;
+	var retArr : arr;
+	while (a <= s1) & (b <= s2) do
+		if list1[a] <= list2[b] then
+			retArr[c] := list1[a];
+			a := a + 1;
+			c := c + 1;
+		else
+			retArr[c] := list2[b];
+			b := b + 1;
+			c := c + 1;
+		endif;
+	enddo;
+	while a <= s1 do
+		retArr[c] := list1[a];
+		a := a + 1;
+		c := c + 1;
+	enddo;
+	while b <= s2 do
+		retArr[c] := list2[b];
+		b := b + 1;
+		c := c + 1;
+	enddo;
+	return retArr;
+	end;
+end;
+
+void main()
+begin
+	begin
+	var input : arr;
+	var size : int := 13;
+	input[1] := 23;
+	input[2] := 18;
+	input[3] := 3;
+	input[4] := 2876;
+	input[5] := 25;
+	input[6] := 9;
+	input[7] := 56;
+	input[8] := 196;
+	input[9] := 0;
+	input[10] := 9120;
+	input[11] := 773;
+	input[12] := 861;
+	input[13] := 67;
+	mergesort(input, size);
+	end;
+end;

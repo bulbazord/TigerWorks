@@ -1,0 +1,87 @@
+type a= int;
+type b=fixedpt;
+type c=array [3] of int;
+type d=array [2] of fixedpt;
+type e=array [3][3] of int;
+type f=array [4][4] of fixedpt; 
+
+void function g(l: int)
+	begin 
+		begin 
+			type aa = int;
+			var ab : int := 1;
+			ab := 2;
+		end;
+	end;
+	
+int function h(m : fixedpt)
+	begin 
+		begin 
+			type aa = int;
+			var ab : int := 2;
+			if 2 then 
+				ab:= ab;
+			endif ;
+		end;
+	end;
+	
+fixedpt function i(n : int)
+	begin 
+		begin 
+			type aa = int;
+			var ab : e;
+			ab [0][0]:= ( 1*2 ) = 3*4+1;
+			ab[1][1]:=1-2;
+			ab[2][2]:=ab[0][0]/ab[1][1];
+			ab[0][1]:=ab[1][1]<>ab[2][2];
+			ab[0][2]:=ab[1][1]<ab[2][2];
+			ab[1][0]:=ab[1][1]>ab[2][2];
+			ab[1][1]:=ab[1][1]>=ab[2][2];
+			ab[1][2]:=ab[1][1]<=ab[2][2];
+			ab[2][0]:=ab[1][1]&ab[2][2];
+			ab[2][1]:=ab[1][1]|ab[2][2];
+			return 2.0;
+		end;
+	end;
+	
+void function k(o : int, p : a)
+	begin 
+		begin 
+			type aa = int;
+			var ab : c:= 4;
+			if 2 < 3 then 
+				ab[0] := 2;
+			else 
+				ab[0] := 2;
+			endif;
+		end;
+		begin
+			type aa = int;
+			type ab = int;
+			var ac : int;
+			var ad, ae : b := 1.2;
+			while ac > ad do 
+				break; 
+			enddo;
+			for ac := 0 to ad + 1 do 
+				b:=b+0.1;
+			enddo;
+			for ac := 0 to ad - 1 do 
+				b:=b+0.1;
+			enddo;
+			for ac := 0 to ad * 1 do 
+				b:=b+0.1;
+			enddo;
+		end;
+	end;
+
+void main( )
+		begin 
+			begin
+			    var num : int := 0;
+			    var varA : a;
+			    var temp : fixedpt := 0.0;
+			    k( num, varA) ;
+			    num:=i(num);
+			end;
+		end;

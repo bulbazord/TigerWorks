@@ -363,7 +363,7 @@ optionalinit    : (ASSIGN tiger_const)?;
  */
 idstatrule      : ID^ (valuetail ASSIGN^ expr | funccalltail) SEMI!;
 
-funccalltail    : LPAREN! exprlist RPAREN!;
+funccalltail    : LPAREN! f_exprlist RPAREN!;
 
 statseq         : (stat)+;
 ifthen          : IF^ expr THEN statseq (ELSE statseq)? ENDIF! SEMI!;
@@ -381,6 +381,14 @@ compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
 addsubexpr      : exprlit (multdivop^ exprlit)*;
 exprlit         : tiger_const | ID^ (valuetail | funccalltail) | LPAREN! expr RPAREN!;
 
+// Expressions for the purpose of not allowing nested function calls
+
+f_expr            : f_logicexpr (logicop^ f_logicexpr)*;
+f_logicexpr       : f_compareexpr (compareop^ f_compareexpr)*;
+f_compareexpr     : f_addsubexpr (addsubop^ f_addsubexpr)*;
+f_addsubexpr      : f_exprlit (multdivop^ f_exprlit)*;
+f_exprlit         : tiger_const | ID^ (valuetail) | LPAREN! f_expr RPAREN!;
+
 // Constant/Value
 tiger_const     : INTLIT | FIXEDPTLIT;
 value           : ID valuetail;
@@ -388,6 +396,7 @@ valuetail       : (LBRACK! indexexpr RBRACK! (LBRACK! indexexpr RBRACK!)?)?;
 
 // Expression list
 exprlist        : (expr (COMMA! expr)*)?;
+f_exprlist      : (f_expr (COMMA! f_expr)*)?;
 
 // Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;

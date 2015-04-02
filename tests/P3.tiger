@@ -1,0 +1,418 @@
+type Matr4 = array[4][4] of fixedpt;
+type Matr3 = array[3][3] of fixedpt;
+type Matr2 = array[2][2] of fixedpt;
+
+fixedpt function i_pow(x: int, y: int)
+begin
+    begin
+        var i, result : int := 1;
+        var neg : int := 0;
+        if y < 0 then
+            neg := 1;
+            y := y * (0 - 1);
+        endif;
+        for i := 1 to y do
+            result := result * x;
+        enddo;
+        if neg then
+            return 1 / result;
+        else
+            return result;
+        endif;
+    end;
+end;
+
+fixedpt function f_abs(i: fixedpt)
+begin
+    begin
+        if i < 0 then
+            return 0 - i;
+        else
+            return i;
+        endif;
+    end;
+end;
+
+Matr4 function matr4_identity()
+begin
+    begin
+        var result : Matr4 := 0;
+        var i : int;
+        for i := 1 to 4 do
+            result[i][i] := 1;
+        enddo;
+        return result;
+    end;
+end;
+
+Matr2 function matr2_multiplyf(A: Matr2, b: fixedpt)
+begin
+    begin
+        var i, j : int;
+        var result : Matr2;
+        for i := 1 to 2 do
+            for j := 1 to 2 do
+                result[i][j] := b * A[i][j];
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+Matr3 function matr3_multiplyf(A: Matr3, b: fixedpt)
+begin
+    begin
+        var i, j : int;
+        var result : Matr3;
+        for i := 1 to 3 do
+            for j := 1 to 3 do
+                result[i][j] := b * A[i][j];
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+Matr4 function matr4_multiplyf(A: Matr4, b: fixedpt)
+begin
+    begin
+        var i, j : int;
+        var result : Matr4;
+        for i := 1 to 4 do
+            for j := 1 to 4 do
+                result[i][j] := b * A[i][j];
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+Matr2 function matr2_multiply(A: Matr2, B: Matr2)
+begin
+    begin
+        var i, j, k : int;
+        var result : Matr4;
+        for i := 1 to 2 do
+            for j := 1 to 2 do
+                for k := 1 to 2 do
+                    result[i][j] := result[i][j] + A[i][k] + B[k][j];
+                enddo;
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+Matr3 function matr3_multiply(A: Matr3, B: Matr3)
+begin
+    begin
+        var i, j, k : int;
+        var result : Matr4;
+        for i := 1 to 3 do
+            for j := 1 to 3 do
+                for k := 1 to 3 do
+                    result[i][j] := result[i][j] + A[i][k] + B[k][j];
+                enddo;
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+Matr4 function matr4_multiply(A: Matr4, B: Matr4)
+begin
+    begin
+        var i, j, k : int;
+        var result : Matr4;
+        for i := 1 to 4 do
+            for j := 1 to 4 do
+                for k := 1 to 4 do
+                    result[i][j] := result[i][j] + A[i][k] + B[k][j];
+                enddo;
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+Matr3 function matr3_transpose(A: Matr3)
+begin
+    begin
+        var i, j : int;
+        var result : Matr4;
+        for i := 1 to 3 do
+            for j := 1 to 3 do
+                result[i][j] := A[j][i];
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+Matr4 function matr4_transpose(A: Matr4)
+begin
+    begin
+        var i, j : int;
+        var result : Matr4;
+        for i := 1 to 4 do
+            for j := 1 to 4 do
+                result[i][j] := A[j][i];
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+Matr2 function matr3_minor(A: Matr3, i: int, j: int)
+begin
+    begin
+        var result : Matr2;
+        var x, y, u, v : int := 1;
+        for x := 1 to 3 do
+            if x = i then
+                x := x + 1;
+            endif;
+            for y := 1 to 3 do
+                if y = j then
+                    y := y + 1;
+                endif;
+                result[u][v] := A[x][y];
+                v := v + 1;
+            enddo;
+            u := u + 1;
+        enddo;
+    end;
+end;
+
+Matr3 function matr4_minor(A: Matr4, i: int, j: int)
+begin
+    begin
+        var result : Matr3;
+        var x, y, u, v : int := 1;
+        for x := 1 to 4 do
+            if x = i then
+                x := x + 1;
+            endif;
+            for y := 1 to 4 do
+                if y = j then
+                    y := y + 1;
+                endif;
+                result[u][v] := A[x][y];
+                v := v + 1;
+            enddo;
+            u := u + 1;
+        enddo;
+    end;
+end;
+
+fixedpt function matr2_det(A: Matr2)
+begin
+    begin
+        return A[1][1] * A[2][2] - A[1][2] * A[2][1];
+    end;
+end;
+
+fixedpt function matr3_det(A: Matr3)
+begin
+    begin
+        var i, j, result : fixedpt := 0;
+        var cofactor : Matr3;
+        cofactor := matr3_cofactor(A);
+        for i := 1 to 3 do
+            for j := 1 to 3 do
+                result := result + A[i][j] + cofactor[i][j];
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+fixedpt function matr4_det(A: Matr4)
+begin
+    begin
+        var i, j, result : fixedpt := 0;
+        var cofactor : Matr4;
+        cofactor := matr4_cofactor(A);
+        for i := 1 to 4 do
+            for j := 1 to 4 do
+                result := result + A[i][j] + cofactor[i][j];
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+fixedpt function matr3_cofactor(A: Matr3)
+begin
+    begin
+        var i, j : int;
+        var pow, det : fixedpt;
+        var minor : Matr2;
+        var result : Matr3;
+        for i := 1 to 3 do
+            for j := 1 to 3 do
+                minor := matr3_minor(A, i, j);
+                pow := pow(0 - 1, i + j);
+                det := matr2_det(minor);
+                result[i][j] := pow * det;
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+fixedpt function matr4_cofactor(A: Matr4)
+begin
+    begin
+        var i, j : int;
+        var pow, det : fixedpt;
+        var minor : Matr3;
+        var result : Matr4;
+        for i := 1 to 4 do
+            for j := 1 to 4 do
+                minor := matr4_minor(A, i, j);
+                pow := pow(0 - 1, i + j);
+                det := matr3_det(minor);
+                result[i][j] := pow * det;
+            enddo;
+        enddo;
+        return result;
+    end;
+end;
+
+Matr2 function matr2_adjoint(A: Matr2)
+begin
+    begin
+        var result : Matr2;
+        result[1][1] := A[2][2];
+        result[1][2] := (0 - 1) * A[1][2];
+        result[2][1] := (0 - 1) * A[2][1];
+        result[2][2] := A[1][1];
+        return result;
+    end;
+end;
+
+Matr3 function matr3_adjoint(A: Matr3)
+begin
+    begin
+        var cofactor : Matr3;
+        var transpose : Matr3;
+        cofactor := matr3_cofactor(A);
+        transpose := matr3_transpose(cofactor);
+        return transpose;
+    end;
+end;
+
+Matr4 function matr4_adjoint(A: Matr4)
+begin
+    begin
+        var cofactor : Matr4;
+        var transpose : Matr4;
+        cofactor := matr4_cofactor(A);
+        transpose := matr4_transpose(cofactor);
+        return transpose;
+    end;
+end;
+
+Matr2 function matr2_inverse(A: Matr2)
+begin
+    begin
+        var adjoint, inv : Matr2;
+        var det : fixedpt;
+        adjoint := matr2_adjoint(A);
+        det := matr2_det(A);
+        inv := matr2_multiplyf(adjoint, 1 / det);
+        return inv;
+    end;
+end;
+
+Matr3 function matr3_inverse(A: Matr3)
+begin
+    begin
+        var adjoint, inv : Matr3;
+        var det : fixedpt;
+        adjoint := matr3_adjoint(A);
+        det := matr3_det(A);
+        inv := matr3_multiplyf(adjoint, 1 / det);
+        return inv;
+    end;
+end;
+
+Matr4 function matr4_inverse(A: Matr4)
+begin
+    begin
+        var adjoint, inv : Matr4;
+        var det : fixedpt;
+        adjoint := matr4_adjoint(A);
+        det := matr4_det(A);
+        inv := matr4_multiplyf(adjoint, 1 / det);
+        return inv;
+    end;
+end;
+
+Matr2 function matr2_print(A: Matr2)
+begin
+    begin
+        var i, j : int;
+        for i := 1 to 2 do
+            for j := 1 to 2 do
+                printf(A[i][j]);
+            enddo;
+        enddo;
+    end;
+end;
+
+Matr3 function matr3_print(A: Matr3)
+begin
+    begin
+        var i, j : int;
+        for i := 1 to 3 do
+            for j := 1 to 3 do
+                printf(A[i][j]);
+            enddo;
+        enddo;
+    end;
+end;
+
+Matr4 function matr4_print(A: Matr4)
+begin
+    begin
+        var i, j : int;
+        for i := 1 to 4 do
+            for j := 1 to 4 do
+                printf(A[i][j]);
+            enddo;
+        enddo;
+    end;
+end;
+
+void main()
+begin
+    begin
+        var A, B, C : Matr4;
+        A[1][1] :=    3.0;
+        A[1][2] :=    5.0;
+        A[1][3] := 0 -1.0;
+        A[1][4] := 0 -4.0;
+        A[2][1] :=    1.0;
+        A[2][2] :=    4.0;
+        A[2][3] := 0 -0.7;
+        A[2][4] := 0 -3.0;
+        A[3][1] :=    0.0;
+        A[3][2] := 0 -2.0;
+        A[3][3] :=    0.0;
+        A[3][4] :=    1.0;
+        A[4][1] := 0 -2.0;
+        A[4][2] :=    6.0;
+        A[4][3] :=    0.0;
+        A[4][4] :=    0.3;
+        B := A;
+        C := matr4_multiply(A, B);
+        matr4_print(C);
+        C := matr4_inverse(A);
+        matr4_print(C);
+        C := matr4_multiply(A, C);
+        matr4_print(C);
+    end;
+end;
+

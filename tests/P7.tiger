@@ -1,0 +1,11 @@
+void main()
+begin
+  begin
+    type ArrayInt = array [100] of int;
+    var X, Y : ArrayInt := 10; 
+    var i, sum : int := 0;
+      for i := 1 to 100 do 
+        sum := sum + X[i] * Y[i];
+         enddo;
+   end;
+end;

@@ -1,0 +1,76 @@
+/* Start of large program */
+type MyIntArray = array [10] of int;
+type MyFixedPtArray = array [4][4] of fixedpt;
+
+/* Prints each individual element of the MyIntArray type */
+void function printMyArray(arr : MyIntArray)
+begin
+	begin
+		var i : int;
+		for i := 1 to 10 do
+			printi(arr[i]);
+		enddo;
+	end;
+end;
+
+/* Adds the values in a MyIntArray type */
+int function addMyArray(arr : MyIntArray)
+begin
+	begin
+		var i, sum : int := 0;
+		for i := 1 to 10 do
+			sum := sum + arr[i];
+		enddo;
+		return sum;
+	end;
+end;
+
+/* Returns the bigger of the two fixed pt values */
+fixedpt function max(x : fixedpt, y : fixedpt)
+begin
+	begin
+		if x > y then
+			return x;
+		endif;
+		return y;
+	end;
+end;
+
+void main()
+begin
+	begin
+		type TestingArray = array [2][2] of int;
+		var arr : MyIntArray;
+		var index : int := 1;
+		var newArr : MyFixedPtArray;
+		var x, y : int := 1;
+		var sum : int;
+
+
+		sum := addMyArray(arr);
+
+		if sum < 10 then
+			printf(10.0);
+		else
+			printf(0.0);
+		endif;
+
+		arr[2 * 3 + 1] := 7;
+
+		for index := 1 to 10 do
+			if arr[index] = 7 then
+				break;
+			endif;
+		enddo;
+
+		for x := 1 to 4 do
+			for y := 1 to 4 do
+				newArr[x][y] := (x * y);
+			enddo;
+		enddo;
+
+		max(newArr[2 + 1][1 * 1], (1.0 - 1.0) + 3.0 * 3.0);
+
+		printMyArray(arr); 
+	end;
+end;

@@ -45,8 +45,16 @@ public class TigerCompiler {
                                         new FileOutputStream("AST.dot"), "utf-8")); 
                     writer.write(st.toString());
                     writer.close();
-                } catch(IOException ex) {
+                } catch (IOException ex) {
                     System.out.println("There was an error writing to file");
+                }
+
+                // TODO: Properly finish walk.
+                try {
+                    TreeWalker traversal = new TreeWalker(ast);
+                    traversal.walk();
+                } catch (Exception e) {
+                    System.out.println("Semantic error occurred! " + e.getMessage());
                 }
 
             }

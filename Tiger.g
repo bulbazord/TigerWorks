@@ -8,6 +8,11 @@ options {
 }
 
 tokens {
+    PROG;
+    PARAMLIST;
+    BLOCKLIST;
+    BLOCK;
+    STATS;
     COMMA       = ',';
     COLON       = ':';
     SEMI        = ';';
@@ -194,7 +199,6 @@ tokens {
 }
 
 // Keywords and other lexer rules
-
 FUNCTION
     : 'function';
 
@@ -313,7 +317,7 @@ fragment UPPERCASE
 // Parser rules
 // These are for a test only. Everything will change later
 
-tigerprogram    : typedecllist functdecllist mainfunction EOF!;
+tigerprogram    : typedecllist functdecllist mainfunction EOF -> ^(PROG typedecllist functdecllist mainfunction);
 
 // typedecllist stuff
 typedecllist    : (typedecl)*;
@@ -323,21 +327,22 @@ basetype        : INT | FIXEDPT;
 
 //Function declaration list stuff
 functdecllist   : (functdecl)*;
-functdecl       : (VOID_FUNCTION^ | typeid FUNCTION^) ID LPAREN! paramlist RPAREN! blocklist ;
+functdecl       : (VOID_FUNCTION^ | typeid FUNCTION^) ID LPAREN! paramlist RPAREN! blocklist;
 typeid          : basetype | ID;
 
 // Paramater list stuff
-paramlist       : (param (COMMA! param)*)?;
+paramlist       : (param (COMMA param)*)? -> ^(PARAMLIST (param param*)?);
 param           : ID COLON! typeid^;
 
 // Block list stuff
 
 // Function Declaration list and main
-mainfunction    : VOID_MAIN^ LPAREN! RPAREN! BEGIN! blocklist END! SEMI!;
+mainfunction    : VOID_MAIN LPAREN RPAREN BEGIN blocklist END SEMI
+                -> ^(MAIN blocklist);
 
 // Block list
-blocklist       : (block)+;
-block           : BEGIN! declsegment statseq END! SEMI!;
+blocklist       : (block)+ -> ^(BLOCKLIST block+);
+block           : BEGIN^ declsegment statseq END! SEMI!;
 
 // Declaration statements
 declsegment     : typedecllist vardecllist;
@@ -366,9 +371,12 @@ idstatrule      : ID^ (valuetail ASSIGN^ expr | funccalltail) SEMI!;
 funccalltail    : LPAREN! f_exprlist RPAREN!;
 
 statseq         : (stat)+;
-ifthen          : IF^ expr THEN statseq (ELSE statseq)? ENDIF! SEMI!;
-whileloop       : WHILE^ expr DO statseq ENDDO! SEMI!;
-forloop         : FOR^ ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO! SEMI!;
+ifthen          : IF expr THEN statseq (ELSE statseq)? ENDIF SEMI
+                -> ^(IF expr ^(THEN statseq) ^(ELSE statseq)?);
+whileloop       : WHILE expr DO statseq ENDDO SEMI
+                -> ^(WHILE expr ^(STATS statseq));
+forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI
+                -> ^(FOR ID ASSIGN indexexpr indexexpr ^(STATS statseq));
 returnstatrule  : RETURN^ expr SEMI!;
 breakstatrule   : BREAK^ SEMI!;
 stat            : idstatrule | ifthen | whileloop | forloop | returnstatrule | breakstatrule | block;

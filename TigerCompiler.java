@@ -55,7 +55,7 @@ public class TigerCompiler {
             System.out.println("A recognition exception has been thrown");
             System.out.println("This should never happen!");
         } catch (Exception e) {
-            System.out.println("An error has occured");
+            e.printStackTrace();
         }
     }
 

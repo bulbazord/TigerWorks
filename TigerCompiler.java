@@ -36,7 +36,6 @@ public class TigerCompiler {
                                     " errors total");
             } else {
                 CommonTree ast = (CommonTree) ret.tree;
-                /* Tree stuff 
                 DOTTreeGenerator gen = new DOTTreeGenerator();
                 StringTemplate st = gen.toDOT(ast);
                 try {
@@ -47,7 +46,7 @@ public class TigerCompiler {
                     writer.close();
                 } catch (IOException ex) {
                     System.out.println("There was an error writing to file");
-                }*/
+                }
 
                 /* Symbol Table stuff! */
                 SymbolTable symbolTable = ret.symbolTable;

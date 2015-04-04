@@ -13,6 +13,7 @@ tokens {
     BLOCKLIST;
     BLOCK;
     STATS;
+    TWODEE;
     COMMA       = ',';
     COLON       = ':';
     SEMI        = ';';
@@ -40,7 +41,7 @@ tokens {
 
 @parser::members {
 
-    private Scope global_scope = new Scope(null);
+    private Scope global_scope = new Scope(null, "global");
     private Scope current_scope = global_scope;
     private SymbolTable symbolTable = new SymbolTable(global_scope);
 
@@ -323,20 +324,54 @@ fragment UPPERCASE
 // These are for a test only. Everything will change later
 
 tigerprogram returns [SymbolTable symbolTable]
-    : typedecllist functdecllist mainfunction EOF {
+    : typedecllist functdecllist mainfunction EOF! {
         $symbolTable = symbolTable;
-    }
-    -> ^(PROG typedecllist functdecllist mainfunction);
+    };
 
 // typedecllist stuff
 typedecllist    : (typedecl)*;
-typedecl        : TYPE^ ID EQ type SEMI!;
-type            : basetype | ARRAY LBRACK! INTLIT RBRACK! (LBRACK! INTLIT RBRACK!)? OF! basetype;
+typedecl        : TYPE^ ID EQ type[$ID.text] SEMI!;
+
+type[String name]
+                : basetype {
+                    if ($basetype.text.equals("int")) {
+                        SymbolTableEntry temp = new TypeTableEntry(current_scope, name, PrimitiveType.TIGER_INT, 0, 0);
+                        symbolTable.put(temp);
+                    } else if ($basetype.text.equals("fixedpt")) {
+                        SymbolTableEntry temp = new TypeTableEntry(current_scope, name, PrimitiveType.TIGER_FIXEDPT, 0, 0);
+                        symbolTable.put(temp);
+                    }
+                }
+                
+                | (ARRAY LBRACK INTLIT RBRACK LBRACK INTLIT RBRACK)
+                  =>  ARRAY^ LBRACK! b1=INTLIT RBRACK! LBRACK! b2=INTLIT RBRACK! OF! basetype {
+                    if ($basetype.text.equals("int")) {
+                        SymbolTableEntry temp = new TypeTableEntry(current_scope, name, PrimitiveType.TIGER_INT_2D_ARR, Integer.parseInt($b1.text), Integer.parseInt($b2.text));
+                        symbolTable.put(temp);
+                    } else if ($basetype.text.equals("fixedpt")) {
+                        SymbolTableEntry temp = new TypeTableEntry(current_scope, name, PrimitiveType.TIGER_FIXEDPT_2D_ARR, Integer.parseInt($b1.text), Integer.parseInt($b2.text));
+                        symbolTable.put(temp);
+                    }
+                }
+                | ARRAY^ LBRACK! a1=INTLIT RBRACK! OF! basetype {
+                    if ($basetype.text.equals("int")) {
+                        SymbolTableEntry temp = new TypeTableEntry(current_scope, name, PrimitiveType.TIGER_INT_ARR, Integer.parseInt($a1.text), 0);
+                        symbolTable.put(temp);
+                    } else if ($basetype.text.equals("fixedpt")) {
+                        SymbolTableEntry temp = new TypeTableEntry(current_scope, name, PrimitiveType.TIGER_FIXEDPT_ARR, Integer.parseInt($a1.text), 0);
+                        symbolTable.put(temp);
+                    }
+                };
+
 basetype        : INT | FIXEDPT;
 
 //Function declaration list stuff
 functdecllist   : (functdecl)*;
-functdecl       : (VOID_FUNCTION^ | typeid FUNCTION^) ID LPAREN! paramlist RPAREN! blocklist;
+functdecl       : (VOID_FUNCTION^ | typeid FUNCTION^) ID LPAREN! paramlist RPAREN! BEGIN! {
+                    current_scope = new Scope(current_scope, $ID.text);
+                } blocklist END! {
+                    current_scope = current_scope.getParent();
+                } SEMI!;
 typeid          : basetype | ID;
 
 // Paramater list stuff
@@ -346,12 +381,20 @@ param           : ID COLON! typeid^;
 // Block list stuff
 
 // Function Declaration list and main
-mainfunction    : VOID_MAIN LPAREN RPAREN BEGIN blocklist END SEMI
+mainfunction    : VOID_MAIN LPAREN RPAREN BEGIN {
+                    current_scope = new Scope(current_scope, "main");
+                } blocklist END {
+                    current_scope = current_scope.getParent();
+                } SEMI
                 -> ^(MAIN blocklist);
 
 // Block list
 blocklist       : (block)+ -> ^(BLOCKLIST block+);
-block           : BEGIN^ declsegment statseq END! SEMI!;
+block           : BEGIN^ {
+                    current_scope = new Scope(current_scope);
+                } declsegment statseq END! {
+                    current_scope = current_scope.getParent();
+                } SEMI!;
 
 // Declaration statements
 declsegment     : typedecllist vardecllist;
@@ -375,7 +418,10 @@ optionalinit    : (ASSIGN tiger_const)?;
         a function tail.
 
  */
-idstatrule      : ID^ (valuetail ASSIGN^ expr | funccalltail) SEMI!;
+idstatrule      : (ID valuetail ASSIGN)
+                => ID valuetail ASSIGN expr SEMI!
+                | (ID funccalltail) 
+                => ID funccalltail SEMI!;
 
 funccalltail    : LPAREN! f_exprlist RPAREN!;
 

@@ -35,8 +35,8 @@ public class TigerCompiler {
                                     (lexerErrors+parseErrors) +
                                     " errors total");
             } else {
-                System.out.println("Successful parse!");
                 CommonTree ast = (CommonTree) ret.tree;
+                /* Tree stuff 
                 DOTTreeGenerator gen = new DOTTreeGenerator();
                 StringTemplate st = gen.toDOT(ast);
                 try {
@@ -47,7 +47,13 @@ public class TigerCompiler {
                     writer.close();
                 } catch (IOException ex) {
                     System.out.println("There was an error writing to file");
-                }
+                }*/
+
+                /* Symbol Table stuff! */
+                SymbolTable symbolTable = ret.symbolTable;
+                // This will be ugly
+                symbolTable.print();
+
 
                 // TODO: Properly finish walk.
                 try {
@@ -67,7 +73,7 @@ public class TigerCompiler {
         }
     }
 
-    private static void printTree(CommonTree ast) {
+    /*private static void printTree(CommonTree ast) {
         print(ast, 0);
     }
 
@@ -83,5 +89,5 @@ public class TigerCompiler {
                 print((CommonTree) ie, level + 1);
             }
         }
-    }
+    }*/
 }

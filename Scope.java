@@ -9,7 +9,7 @@ public class Scope {
         this.parent = parent;
     }
 
-    public getParent() {
+    public Scope getParent() {
         return this.parent;
     }
 }

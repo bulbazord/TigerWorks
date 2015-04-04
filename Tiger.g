@@ -39,6 +39,11 @@ tokens {
 // Parser custom code
 
 @parser::members {
+
+    private Scope global_scope = new Scope(null);
+    private Scope current_scope = global_scope;
+    private SymbolTable symbolTable = new SymbolTable(global_scope);
+
     public void displayRecognitionError(String[] tokens, RecognitionException re) {
         // First, split the program into lines and identify the offending line
         String program = re.input.toString();
@@ -317,7 +322,11 @@ fragment UPPERCASE
 // Parser rules
 // These are for a test only. Everything will change later
 
-tigerprogram    : typedecllist functdecllist mainfunction EOF -> ^(PROG typedecllist functdecllist mainfunction);
+tigerprogram returns [SymbolTable symbolTable]
+    : typedecllist functdecllist mainfunction EOF {
+        $symbolTable = symbolTable;
+    }
+    -> ^(PROG typedecllist functdecllist mainfunction);
 
 // typedecllist stuff
 typedecllist    : (typedecl)*;

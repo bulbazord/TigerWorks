@@ -17,11 +17,11 @@ public class SymbolTable {
      * small symbol table. The scope object will have a parent scope, so we
      * can recursively search upward at the parent tables to find things.
      */
-    private Map<Scope, HashMap<String, SymbolTableEntry>> symbolTable;
+    private Map<Scope, Map<String, SymbolTableEntry>> symbolTable;
 
 
     public SymbolTable(Scope globalScope) {
-        symbolTable = new HashMap<Scope, HashMap<String, SymbolTableEntry>>();
+        symbolTable = new HashMap<Scope, Map<String, SymbolTableEntry>>();
         setup(globalScope);
     }
 
@@ -35,10 +35,28 @@ public class SymbolTable {
         return entry;
     }
 
+    public void put(Scope scope, String name) {
+        if (symbolTable.get(scope) == null) {
+           Map<String, SymbolTableEntry> temp = new HashMap<String, SymbolTableEntry>();
+           symbolTable.put(scope, temp);
+        }
+        Map<String, SymbolTableEntry> nameTable = symbolTable.get(scope);
+        /* Check to see if it's in there already */
+        if (nameTable.get(name) == null) {
+            SymbolTableEntry temp = new SymbolTableEntry(name);
+            nameTable.put(name, temp);
+        }
+    }
+
     /* Add the following things to our symbol table:
      *  - The int and fixedpt types
      *  - The standard library functions
      */
     public void setup(Scope globalScope) {
+        put(globalScope, TIGER_INT);
+    }
+
+    public void print() {
+        System.out.println(symbolTable);
     }
 }

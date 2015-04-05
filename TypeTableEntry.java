@@ -25,7 +25,7 @@ public class TypeTableEntry extends SymbolTableEntry {
         return this.height;
     }
 
-    public String toString() {
+    public String trueTypeToString() {        
         String backingType = "";
         switch (this.trueType) {
             case TIGER_INT:
@@ -57,10 +57,15 @@ public class TypeTableEntry extends SymbolTableEntry {
             break;
 
         }
-        String scopeName = (this.getScope().getId() == null) ? this.getScope().toString() : this.getScope().getId();
+        return backingType;
+ 
+    }
+
+    public String toString() {
+       String scopeName = (this.getScope().getId() == null) ? this.getScope().toString() : this.getScope().getId();
         return "Type" +
                 "\n\tName: " + this.getName() +
                 "\n\tScope: " + scopeName +
-                "\n\tTrue type: " + backingType;
+                "\n\tTrue type: " + trueTypeToString();
     }
 }

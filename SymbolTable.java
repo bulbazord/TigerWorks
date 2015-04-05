@@ -53,16 +53,29 @@ public class SymbolTable {
         return entry;
     }
 
+    public SymbolTableEntry getTigerInt() {
+        return this.tigerInt;
+    }
+
+    public SymbolTableEntry getTigerFixedpt() {
+        return this.tigerFixedpt;
+    }
+
     /** Inserts a symbol into the table.
      *  This method checks for you to see if something exists already.
      */
-    public void put(SymbolTableEntry entry) {
+    public void put(SymbolTableEntry entry) throws NameSpaceException {
         if (entry instanceof FunctionTableEntry) {
-            System.out.println("Function insertion not implement");
+            SymbolTableEntry exists = get(entry.getScope(), entry.getName(), true);
+            if (exists == null) {
+                functionTable.put(entry.getName(), entry);
+            } else {
+                throw new NameSpaceException(entry.getName() + " is already a defined function");
+            }
         } else {
             // Either want to insert variable or new type
             SymbolTableEntry exists = get(entry.getScope(), entry.getName(), false);
-            if (exists == null) {
+            if (exists == null || exists.getScope() != entry.getScope()) {
                 Scope scope = entry.getScope();
                 String name = entry.getName();
                 // If the scope has never been used before, gotta make the scope's nametable
@@ -75,9 +88,9 @@ public class SymbolTable {
                 nameTable.put(name, entry);
             } else {
                 if (exists instanceof TypeTableEntry) {
-                    System.out.println(entry.getName() + " is already a defined type in this scope");
+                    throw new NameSpaceException(entry.getName() + " is already a defined type in this scope");
                 } else {
-                    System.out.println(entry.getName() + " is already a defined variable in this scope");
+                    throw new NameSpaceException(entry.getName() + " is already a defined variable in this scope");
                 }
             }
         }
@@ -90,9 +103,13 @@ public class SymbolTable {
     public void setup(Scope globalScope) {
         this.tigerInt = new TypeTableEntry(globalScope, "int", PrimitiveType.TIGER_INT, 0, 0);
         this.tigerFixedpt = new TypeTableEntry(globalScope, "fixedpt", PrimitiveType.TIGER_FIXEDPT, 0, 0);
-
-        put(this.tigerInt);
-        put(this.tigerFixedpt);
+        try {
+            put(this.tigerInt);
+            put(this.tigerFixedpt);
+        } catch (NameSpaceException nse) {
+            System.out.println("You had trouble inserting built-in types/functions into the" +
+                                " symbol table? You must be really unlucky");
+        }
     }
 
     public void print() {

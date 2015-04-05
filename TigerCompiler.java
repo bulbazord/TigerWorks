@@ -50,17 +50,19 @@ public class TigerCompiler {
 
                 /* Symbol Table stuff! */
                 SymbolTable symbolTable = ret.symbolTable;
-                // This will be ugly
-                symbolTable.print();
+                boolean errorsExist = ret.errorExists;
+                if (!errorsExist) {
+                    symbolTable.print();
+                }
 
 
                 // TODO: Properly finish walk.
-                try {
+                /*try {
                     TreeWalker traversal = new TreeWalker(ast);
                     traversal.walk();
                 } catch (Exception e) {
                     System.out.println("Semantic error occurred! " + e.getMessage());
-                }
+                }*/
 
             }
 

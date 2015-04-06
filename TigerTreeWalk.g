@@ -2,7 +2,7 @@ tree grammar TigerTreeWalk;
 
 options {
     output = AST;
-    backtrack = no;
+    backtrack = true;
     tokenVocab = Tiger;
     ASTLabelType = CommonTree; 
 }
@@ -10,11 +10,15 @@ options {
 @header {
     import java.util.List;
     import java.util.LinkedList;
+    import java.util.Queue;
 }
 
 @members {
     private SymbolTable table;
     private static final String DEFAULT_FILENAME = "ir.tigir";
+
+    // This has to be a queue to account for nested loops. 
+    private Queue<String> loopLabels = new LinkedList<String>();
 
     private int tempVarCount = 0;
 
@@ -54,18 +58,17 @@ basetype        : ^(BASETYPE INT)
 functdecllist   : ^(FUNCTDECLLIST functdecl*) ;
 
 functdecl       : ^(FUNCTION VOID ID {
-                      generator.addLabel(ID.text);
+                      generator.addLabel($ID.text);
                   } paramlist {
-                      for (String param : $param_list.params) {
-                        // Initialize the function arguments
-                        generator.assignVar(param, "0"));
+                      for (String param : $paramlist.params) {
+                        generator.assignVar(param, "0");
                       }
                   } blocklist)
-                | ^(FUNCTION typeid ID paramlist
+                | ^(FUNCTION typeid ID {
+                      generator.addLabel($ID.text);
                   } paramlist {
-                      for (String param : $param_list.params) {
-                        // Initialize the function arguments
-                        generator.assignVar(param, "0"));
+                      for (String param : $paramlist.params) {
+                        generator.assignVar(param, "0");
                       }
                   } blocklist);
 
@@ -77,12 +80,12 @@ paramlist returns [List<String> params]
                     $params = new LinkedList<String>();
                 }
                 : ^(PARAMLIST (param {
-                    $paramList.params.add($param.name);
+                    $paramlist.params.add($param.name);
                 })*);
 
-params returns [String name]
+param returns [String name]
                 : ^(PARAM ID {
-                    $params.name = $ID.text;
+                    $param.name = $ID.text;
                   } typeid);
 
 mainfunction    : ^(MAIN {
@@ -98,7 +101,7 @@ declsegment     : ^(DECLSEGMENT typedecllist vardecllist);
 vardecllist     :  ^(VARDECLLIST vardecl*);
 
 vardecl         :  ^(VARDECL idlist {
-                        for (String name : $idList.names) {
+                        for (String name : $idlist.names) {
                             generator.assignVar(name, "0");
                         }
                    } typeid);
@@ -118,7 +121,8 @@ funccalltail    : LPAREN! f_exprlist RPAREN!;
 
 statseq         : ^(STATS stat+);
 
-ifthen          : ^(IF expr ^(THEN statseq) ^(ELSE statseq)?);
+ifthen          : ^(IF expr ^(THEN statseq) ^(ELSE statseq))
+                | ^(IF expr ^(THEN statseq));
 
 whileloop       : ^(WHILE expr statseq);
 
@@ -132,14 +136,14 @@ stat            : idstatrule | ifthen | whileloop | forloop | returnstatrule
 
 // Expressions
 
-expr            : logicexpr (logicop^ logicexpr)*;
-logicexpr       : compareexpr (compareop^ compareexpr)*;
+expr returns [Operator type]
+                : logicexpr (logicop^ logicexpr)*;
+logicexpr returns [Operator type]       
+                : compareexpr (compareop^ compareexpr)*;
 compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
-addsubexpr      : exprlit (multdivop^ exprlit)*;
-exprlit         : tiger_const 
-                | ID^ (valuetail | funccalltail)
-                | LPAREN! expr RPAREN!;
-
+addsubexpr      : ^(addsubop tiger_const expr) 
+                | ^(addsubop value expr)
+                | ^(addsubop expr expr);
 
 // Expressions for the purpose of not allowing nested function calls
 
@@ -153,8 +157,9 @@ f_exprlit         : tiger_const | value | LPAREN! f_expr RPAREN!;
 tiger_const       : INTLIT 
                   | FIXEDPTLIT;
 
-value           : ^(VALUE ID valuetail);
-valuetail       : -> ^(VALUETAIL (indexexpr (indexexpr)?)?);
+value           : ^(VALUE ID indexexpr indexexpr) 
+                | ^(VALUE ID indexexpr)
+                | ^(VALUE ID);
 
 // Expression list
 exprlist        : (expr (COMMA! expr)*)?;

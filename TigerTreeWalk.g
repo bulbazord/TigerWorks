@@ -16,6 +16,8 @@ options {
     private SymbolTable table;
     private static final String DEFAULT_FILENAME = "ir.tigir";
 
+    private int tempVarCount = 0;
+
     // Add things to the generator as they come up. 
     private IRGenerator generator = new IRGenerator();
 
@@ -23,6 +25,10 @@ options {
     public TigerTreeWalk(TreeNodeStream input, SymbolTable t) {
         this(input);
         table = t;
+    }
+
+    private String nextTemp() {
+        return "t" + tempVarCount++;
     }
 }
 
@@ -160,7 +166,19 @@ indexmultexpr   : indexlit (multdivop^ indexlit)*;
 indexlit        : INTLIT | ID | FIXEDPTLIT | LPAREN! indexexpr RPAREN!;
 
 // Binary Operators
-multdivop       : MULT | DIV;
-addsubop        : PLUS | MINUS;
-compareop       : EQ | NEQ | LESSER | LESSEREQ | GREATER | GREATEREQ;
-logicop         : AND | OR;
+multdivop returns [Operator type]
+                : MULT {$type = Operator.MULT;} 
+                | DIV {$type = Operator.DIV;};
+addsubop returns [Operator type]
+                : PLUS {$type = Operator.PLUS;}
+                | MINUS {$type = Operator.MINUS;};
+compareop returns [Operator type]
+                : EQ {$type = Operator.EQ;}
+                | NEQ {$type = Operator.NEQ;}
+                | LESSER {$type = Operator.LESSER;}
+                | LESSEREQ {$type = Operator.LESSEREQ;}
+                | GREATER {$type = Operator.GREATER;}
+                | GREATEREQ {$type = Operator.GREATEREQ;};
+logicop returns [Operator type]
+                : AND {$type = Operator.AND;}
+                | OR {$type = Operator.OR;};

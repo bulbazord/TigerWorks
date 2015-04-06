@@ -13,6 +13,11 @@ public class TypeTableEntry extends SymbolTableEntry {
         this.height = height;
     }
 
+    public boolean equals(TypeTableEntry other) {
+        return (this.getScope() == other.getScope())
+                && (this.getName().equals(other.getName()));
+    }
+
     public PrimitiveType getTrueType() {
         return this.trueType;
     }

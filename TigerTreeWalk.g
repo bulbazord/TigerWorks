@@ -7,12 +7,9 @@ options {
     ASTLabelType = CommonTree; 
 }
 
-tokens {
-    
-}
-
 @header {
-
+    import java.util.List;
+    import java.util.LinkedList;
 }
 
 @members {
@@ -21,6 +18,8 @@ tokens {
 
     // Add things to the generator as they come up. 
     private IRGenerator generator = new IRGenerator();
+
+
     public TigerTreeWalk(TreeNodeStream input, SymbolTable t) {
         this(input);
         table = t;
@@ -30,7 +29,8 @@ tokens {
 // The starting point for the walk function. 
 walk            : ^(PROG typedecllist functdecllist mainfunction)
                 {
-                    IRGenerator.writeToFile(DEFAULT_FILENAME);
+                    // This should run at the end of the parsing
+                    generator.writeToFile(DEFAULT_FILENAME);
                 };
 
 // The beginnign type declaration block 
@@ -45,19 +45,43 @@ type            : basetype
 basetype        : ^(BASETYPE INT)
                 | ^(BASETYPE FIXEDPT);
 
-functdecllist   : ^(FUNCTDECLLIST functdecl*);
+functdecllist   : ^(FUNCTDECLLIST functdecl*) ;
 
-functdecl       : ^(FUNCTION VOID ID paramlist blocklist)
-                | ^(FUNCTION typeid ID paramlist blocklist);
+functdecl       : ^(FUNCTION VOID ID {
+                      generator.addLabel(ID.text);
+                  } paramlist {
+                      for (String param : $param_list.params) {
+                        // Initialize the function arguments
+                        generator.assignVar(param, "0"));
+                      }
+                  } blocklist)
+                | ^(FUNCTION typeid ID paramlist
+                  } paramlist {
+                      for (String param : $param_list.params) {
+                        // Initialize the function arguments
+                        generator.assignVar(param, "0"));
+                      }
+                  } blocklist);
 
 typeid          : ^(TYPEID basetype)
                 | ^(TYPEID ID);
 
-paramlist       : ^(PARAMLIST param*);
+paramlist returns [List<String> params] 
+                @init {
+                    $params = new LinkedList<String>();
+                }
+                : ^(PARAMLIST (param {
+                    $paramList.params.add($param.name);
+                })*);
 
-param           : ^(PARAM ID typeid);
+params returns [String name]
+                : ^(PARAM ID {
+                    $params.name = $ID.text;
+                  } typeid);
 
-mainfunction    : ^(MAIN blocklist);
+mainfunction    : ^(MAIN {
+                    generator.addLabel($MAIN.text);
+                  } blocklist);
 
 blocklist       : ^(BLOCKLIST block+);
 
@@ -67,9 +91,19 @@ declsegment     : ^(DECLSEGMENT typedecllist vardecllist);
 
 vardecllist     :  ^(VARDECLLIST vardecl*);
 
-vardecl         :  ^(VARDECL idlist typeid);
+vardecl         :  ^(VARDECL idlist {
+                        for (String name : $idList.names) {
+                            generator.assignVar(name, "0");
+                        }
+                   } typeid);
 
-idlist          :  ^(IDLIST ID+);
+idlist returns [List<String> names] 
+                @init {
+                    $names = new ArrayList<String>();
+                }
+                :  ^(IDLIST (ID {
+                    $names.add($ID.text);
+                })+);
 
 idstatrule      : ^(ASSIGN value expr)
                 | ^(FUNCCALL ID funccalltail);
@@ -78,9 +112,9 @@ funccalltail    : LPAREN! f_exprlist RPAREN!;
 
 statseq         : ^(STATS stat+);
 
-ifthen          :  ^(IF expr ^(THEN statseq) ^(ELSE statseq)?);
+ifthen          : ^(IF expr ^(THEN statseq) ^(ELSE statseq)?);
 
-whileloop       :  ^(WHILE expr statseq);
+whileloop       : ^(WHILE expr statseq);
 
 forloop         : ^(FOR ID ASSIGN indexexpr indexexpr statseq);
 

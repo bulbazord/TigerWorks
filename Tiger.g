@@ -65,8 +65,6 @@ tokens {
     private SymbolTable symbolTable = new SymbolTable(global_scope);
     private String current_function;
     private boolean errorExists = false;
-    private boolean tooManyCompareOp = false;
-    private boolean validBoolExpr = true;
 
     public SemanticObject evaluateType(SemanticObject a1, SemanticObject a2, String binaryOp, int lineNumber) {
         if (a1 == null && a2 == null) {
@@ -87,10 +85,15 @@ tokens {
             } else {
                 isConst = false;
                 if (!a1.getType().equals(a2.getType())) {
-                    errorExists = true;
-                    System.out.print("Line " + lineNumber + ": ");
-                    System.out.println("Type conflict between " + a1.getName() + " and " + a2.getName());
-                    return null;
+                    if ((a1.getType().equals(symbolTable.getTigerInt()) && a2.getType().equals(symbolTable.getTigerFixedpt()))
+                        || (a2.getType().equals(symbolTable.getTigerInt()) && a1.getType().equals(symbolTable.getTigerFixedpt()))) {
+                        return new SemanticObject(isConst, symbolTable.getTigerFixedpt(), name);
+                    } else {
+                        errorExists = true;
+                        System.out.print("Line " + lineNumber + ": ");
+                        System.out.println("Type conflict between " + a1.getName() + " and " + a2.getName());
+                        return null;
+                    }
                 } else {
                     type = a1.getType();
                     return new SemanticObject(isConst, type, name);
@@ -642,15 +645,7 @@ vardecl         : (VAR idlist COLON typeid ASSIGN)
                         System.out.println("Type " + $typeid.text + " was never defined.");
                         errorExists = true;
                     } else {
-                        if (((TypeTableEntry)$tiger_const.typeChecker.getType()).getTrueType() == PrimitiveType.TIGER_INT
-                            && !(((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT ||
-                                 ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT_ARR ||
-                                 ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT_2D_ARR)) {
-
-                            System.out.print("Line " + $VAR.getLine() + ": ");
-                            System.out.println("The assigned value and the type do not agree");
-                            errorExists = true;
-                        } else if (((TypeTableEntry)$tiger_const.typeChecker.getType()).getTrueType() == PrimitiveType.TIGER_FIXEDPT
+                        if (((TypeTableEntry)$tiger_const.typeChecker.getType()).getTrueType() == PrimitiveType.TIGER_FIXEDPT
                             && !(((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT ||
                                  ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR ||
                                  ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT_2D_ARR)) {
@@ -859,14 +854,83 @@ idlist          : ID (COMMA ID)*
         a function tail.
 
  */
-assignrule      : (value ASSIGN expr)
-                => value ASSIGN expr SEMI
-                -> ^(ASSIGN value expr)
-                | (value ASSIGN funccall) 
-                => value ASSIGN funccall SEMI
-                -> ^(ASSIGN value funccall);
+ 
+assignrule      : (value ASSIGN funccall) 
 
-funccall        : ID LPAREN argumentlist[new ArrayList<SemanticObject>()] RPAREN
+                => value ASSIGN funccall SEMI {
+                    SymbolTableEntry variable = symbolTable.get(current_scope, $value.text, false);
+                    if (variable == null || variable instanceof TypeTableEntry) {
+                        errorExists = true;
+                        System.out.print("Line " + $ASSIGN.getLine() + ": ");
+                        System.out.println($value.name + " is not a declared variable in this scope.");
+                    } else {
+                        SymbolTableEntry function = symbolTable.get(global_scope, $funccall.name, true);
+                        if (function == null) {
+                            errorExists = true;
+                            System.out.print("Line " + $ASSIGN.getLine() + ": ");
+                            System.out.println($value.name + " is not a defined function.");
+                        } else {
+                            if (!((VarTableEntry)variable).getType().equals(((FunctionTableEntry)function).getReturnType()) && !(((VarTableEntry)variable).getType().equals(symbolTable.getTigerFixedpt()) && ((FunctionTableEntry)function).getReturnType().equals(symbolTable.getTigerInt()))) {
+                                errorExists = true;
+                                System.out.print("Line " + $ASSIGN.getLine() + ": ");
+                                System.out.println("Conflicting types between assignment and function call.");
+                            }
+                        }
+                    }
+                }
+                -> ^(ASSIGN value funccall)
+                | (value ASSIGN expr)
+                => value ASSIGN expr SEMI {
+                    SymbolTableEntry variable = symbolTable.get(current_scope, $value.name, false);
+                    if (variable == null || variable instanceof TypeTableEntry) {
+                        errorExists = true;
+                        System.out.print("Line " + $ASSIGN.getLine() + ": ");
+                        System.out.println($value.name + " is not a declared variable in this scope.");
+                    } else {
+                        if ($expr.isBool) {
+                            errorExists = true;
+                            System.out.print("Line " + $ASSIGN.getLine() + ": ");
+                            System.out.println("Cannot assign a boolean to a variable.");
+                        } else {
+                            SemanticObject assignExpr = $expr.typeChecker;
+                            if (assignExpr == null || (!assignExpr.getType().equals(((VarTableEntry)variable).getType()) && !(((VarTableEntry)variable).getType().equals(symbolTable.getTigerFixedpt()) && (assignExpr.getType().equals(symbolTable.getTigerInt()))))) {
+                                errorExists = true;
+                                System.out.print("Line " + $ASSIGN.getLine() + ": ");
+                                System.out.println("The variable " + $value.text + " cannot be assigned to the expression " + $expr.text + ".");
+                            }
+                        }
+                    }
+                }
+                -> ^(ASSIGN value expr);
+
+funccall returns [String name]
+                : ID LPAREN argumentlist[new ArrayList<SemanticObject>()] RPAREN {
+                    SymbolTableEntry function = symbolTable.get(global_scope, $ID.text, true);
+                    if (function == null) {
+                        errorExists = true;
+                        System.out.print("Line " + $ID.getLine() + ": ");
+                        System.out.println("Function does not exist.");
+                    } else {
+                        List<TypeTableEntry> originalParamList = ((FunctionTableEntry)function).getParameterList();
+                        List<SemanticObject> givenParamList = $argumentlist.argTypes;
+                        if (originalParamList != null && givenParamList != null) {
+                            if (originalParamList.size() != givenParamList.size()) {
+                                errorExists = true;
+                                System.out.print("Line " + $ID.getLine() + ": ");
+                                System.out.println("Not enough parameters given.");
+                            } else {
+                                for (int i = 0; i < originalParamList.size(); i++) {
+                                    if (!originalParamList.get(i).equals((TypeTableEntry)(givenParamList.get(i).getType())) && !(originalParamList.get(i).equals(symbolTable.getTigerFixedpt()) && ((TypeTableEntry)(givenParamList.get(i).getType())).equals(symbolTable.getTigerInt()))) {
+                                        errorExists = true;
+                                        System.out.print("Line " + $ID.getLine() + ": ");
+                                        System.out.println("Parameter " + (i+1) + "is the incorrect type.");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    $name = $ID.text;
+                }
                 -> ^(FUNCCALL ID argumentlist);
 
 argumentlist[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
@@ -877,21 +941,50 @@ argumentlist[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
 
 argument[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
                 : expr {
-                    $argTypes = $args;
+                    if (!$expr.isBool) {
+                        args.add($expr.typeChecker);
+                        $argTypes = args;
+                    }
                 };
-
-funccalltail    : LPAREN! exprlist RPAREN!;
 
 statseq         : (stat)+
                 -> ^(STATS stat+);
-ifthen          : IF expr THEN statseq (ELSE statseq)? ENDIF SEMI
-                -> ^(IF expr ^(THEN statseq) ^(ELSE statseq)?);
-whileloop       : WHILE expr DO statseq ENDDO SEMI
+
+ifthen          : (IF expr THEN statseq ELSE) 
+                => IF expr {
+                    if ($expr.isBool == false) {
+                        errorExists = true;
+                        System.out.print("Line " + $IF.getLine() + ": ");
+                        System.out.println("Conditional is not a boolean.");
+                    }
+                } THEN statseq ELSE statseq ENDIF SEMI
+                -> ^(IF expr statseq ^(ELSE statseq)?)
+                | IF expr {
+                    if ($expr.isBool == false) {
+                        errorExists = true;
+                        System.out.print("Line " + $IF.getLine() + ": ");
+                        System.out.println("Conditional is not a boolean.");
+                    }
+                } THEN statseq ENDIF SEMI
+                -> ^(IF expr statseq);
+
+whileloop       : WHILE expr {
+                    if ($expr.isBool == false) {
+                        errorExists = true;
+                        System.out.print("Line " + $WHILE.getLine() + ": ");
+                        System.out.println("Conditional is not a boolean.");
+                    }
+                } DO statseq ENDDO SEMI
                 -> ^(WHILE expr statseq);
 forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI
                 -> ^(FOR ID ASSIGN indexexpr indexexpr statseq);
 returnstatrule  : RETURN^ expr {
-                    // Check expr and the function's return type agreement here
+                    SymbolTableEntry function = symbolTable.get(global_scope, current_function, true);
+                    if (!(((FunctionTableEntry)function).getReturnType().equals($expr.typeChecker.getType())) && !(((FunctionTableEntry)function).getReturnType().equals(symbolTable.getTigerFixedpt()) && ($expr.typeChecker.getType().equals(symbolTable.getTigerInt())))) {
+                        errorExists = true;
+                        System.out.print("Line " + $RETURN.getLine() + ": ");
+                        System.out.println("Returned type and function return type are incompatible.");
+                    }
                 } SEMI!;
 breakstatrule   : BREAK^ SEMI!;
 stat            : (value ASSIGN) => assignrule 
@@ -1008,7 +1101,7 @@ tiger_const returns [SemanticObject typeChecker, boolean isBool]
         };
 
 
-value returns [SemanticObject typeChecker, boolean isBool]
+value returns [String name, SemanticObject typeChecker, boolean isBool]
                 : (ID LBRACK indexexpr RBRACK LBRACK)
                 => ID LBRACK a1=indexexpr RBRACK LBRACK a2=indexexpr RBRACK {
                     SymbolTableEntry variable = symbolTable.get(current_scope, $ID.text, false);
@@ -1026,6 +1119,7 @@ value returns [SemanticObject typeChecker, boolean isBool]
                         $typeChecker = null;
                     }
                     $isBool = false;
+                    $name = $ID.text;
                 } -> ^(VALUE ID indexexpr indexexpr)
                 | (ID LBRACK)
                 => ID LBRACK indexexpr RBRACK {
@@ -1044,6 +1138,7 @@ value returns [SemanticObject typeChecker, boolean isBool]
                         $typeChecker = null;
                     }
                     $isBool = false;
+                    $name = $ID.text;
                 } -> ^(VALUE ID indexexpr)
                 | ID {
                     SymbolTableEntry variable = symbolTable.get(current_scope, $ID.text, false);
@@ -1057,6 +1152,7 @@ value returns [SemanticObject typeChecker, boolean isBool]
                         $typeChecker = new SemanticObject(false, type, $ID.text); 
                     }
                     $isBool = false;
+                    $name = $ID.text;
                 } -> ^(VALUE ID);
 
 // Expression list
@@ -1080,10 +1176,6 @@ multdivop returns [boolean isBool]
 // boolean
 compareop returns [boolean isBool]
                 : (EQ | NEQ | LESSER | LESSEREQ | GREATER | GREATEREQ) {
-                    if (tooManyCompareOp) {
-                        validBoolExpr = false;
-                    }
-                    tooManyCompareOp = true;
                     $isBool = true;
                 };
 logicop returns [boolean isBool]

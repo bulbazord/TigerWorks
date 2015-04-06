@@ -71,7 +71,7 @@ public class VarTableEntry extends SymbolTableEntry {
                 for (int i = 0; i < ((TypeTableEntry)type).getHeight(); i++) {
                     actualValue = actualValue + "[";
                     for (int j = 0; j < ((TypeTableEntry)type).getLength(); j++) {
-                        actualValue = actualValue + ((Integer[][])value)[i][j].toString() + ",";
+                        actualValue = actualValue + ((Integer[][])value)[j][i].toString() + ",";
                     }
                     actualValue = actualValue + "],";
                 }
@@ -83,7 +83,7 @@ public class VarTableEntry extends SymbolTableEntry {
                 for (int i = 0; i < ((TypeTableEntry)type).getHeight(); i++) {
                     actualValue = actualValue + "[";
                     for (int j = 0; j < ((TypeTableEntry)type).getLength(); j++) {
-                        actualValue = actualValue + ((Double[][])value)[i][j].toString() + ",";
+                        actualValue = actualValue + ((Double[][])value)[j][i].toString() + ",";
                     }
                     actualValue = actualValue + "],";
                 }

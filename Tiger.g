@@ -27,7 +27,7 @@ tokens {
     VALUE;
     VALUETAIL;
     FUNCCALL;
-    F_EXPRLIST;
+    ARGUMENTLIST;
     COMMA       = ',';
     COLON       = ':';
     SEMI        = ';';
@@ -63,7 +63,41 @@ tokens {
     private Scope global_scope = new Scope(null, "global");
     private Scope current_scope = global_scope;
     private SymbolTable symbolTable = new SymbolTable(global_scope);
+    private String current_function;
     private boolean errorExists = false;
+    private boolean tooManyCompareOp = false;
+    private boolean validBoolExpr = true;
+
+    public SemanticObject evaluateType(SemanticObject a1, SemanticObject a2, String binaryOp, int lineNumber) {
+        if (a1 == null && a2 == null) {
+            return null;
+        } else {
+            boolean isConst;
+            String name = a1.getName() + " " + binaryOp + " " + a2.getName();
+            SymbolTableEntry type;
+            if (a1.getIsConstant() && a2.getIsConstant()) {
+                isConst = true;
+                if (!a1.getType().equals(a2.getType())) {
+                    type = symbolTable.getTigerFixedpt();
+                    return new SemanticObject(isConst, type, name);
+                } else {
+                    type = a1.getType();
+                    return new SemanticObject(isConst, type, name);
+                }
+            } else {
+                isConst = false;
+                if (!a1.getType().equals(a2.getType())) {
+                    errorExists = true;
+                    System.out.print("Line " + lineNumber + ": ");
+                    System.out.println("Type conflict between " + a1.getName() + " and " + a2.getName());
+                    return null;
+                } else {
+                    type = a1.getType();
+                    return new SemanticObject(isConst, type, name);
+                }
+            }
+        }
+    }
 
     public void displayRecognitionError(String[] tokens, RecognitionException re) {
         // First, split the program into lines and identify the offending line
@@ -476,6 +510,7 @@ functdecllist   : (functdecl)*
                 -> ^(FUNCTDECLLIST functdecl*);
 functdecl       : VOID_FUNCTION ID {
                     current_scope = new Scope(current_scope, $ID.text);
+                    current_function = $ID.text;
                 } LPAREN paramlist[new ArrayList<TypeTableEntry>()] RPAREN BEGIN {
                     current_scope = new Scope(current_scope);
                     try {
@@ -494,6 +529,7 @@ functdecl       : VOID_FUNCTION ID {
                 //////////////
                 | typeid FUNCTION ID {
                     current_scope = new Scope(current_scope, $ID.text);
+                    current_function = $ID.text;
                 } LPAREN paramlist[new ArrayList<TypeTableEntry>()] RPAREN BEGIN {
                     current_scope = new Scope(current_scope);
                     SymbolTableEntry type = symbolTable.get(current_scope, $typeid.text, false);
@@ -572,6 +608,7 @@ mainfunction    : VOID_MAIN {
                     }
                 } LPAREN RPAREN BEGIN {
                     current_scope = new Scope(current_scope, "main");
+                    current_function = "main";
                 } blocklist END {
                     current_scope = current_scope.getParent();
                 } SEMI
@@ -605,7 +642,7 @@ vardecl         : (VAR idlist COLON typeid ASSIGN)
                         System.out.println("Type " + $typeid.text + " was never defined.");
                         errorExists = true;
                     } else {
-                        if (((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT
+                        if (((TypeTableEntry)$tiger_const.typeChecker.getType()).getTrueType() == PrimitiveType.TIGER_INT
                             && !(((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT ||
                                  ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT_ARR ||
                                  ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT_2D_ARR)) {
@@ -613,7 +650,7 @@ vardecl         : (VAR idlist COLON typeid ASSIGN)
                             System.out.print("Line " + $VAR.getLine() + ": ");
                             System.out.println("The assigned value and the type do not agree");
                             errorExists = true;
-                        } else if ($tiger_const.type == PrimitiveType.TIGER_FIXEDPT
+                        } else if (((TypeTableEntry)$tiger_const.typeChecker.getType()).getTrueType() == PrimitiveType.TIGER_FIXEDPT
                             && !(((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT ||
                                  ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR ||
                                  ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT_2D_ARR)) {
@@ -822,14 +859,28 @@ idlist          : ID (COMMA ID)*
         a function tail.
 
  */
-idstatrule      : (value ASSIGN)
+assignrule      : (value ASSIGN expr)
                 => value ASSIGN expr SEMI
                 -> ^(ASSIGN value expr)
-                | (ID funccalltail) 
-                => ID funccalltail SEMI
-                -> ^(FUNCCALL ID funccalltail);
+                | (value ASSIGN funccall) 
+                => value ASSIGN funccall SEMI
+                -> ^(ASSIGN value funccall);
 
-funccalltail    : LPAREN! f_exprlist RPAREN!;
+funccall        : ID LPAREN argumentlist[new ArrayList<SemanticObject>()] RPAREN
+                -> ^(FUNCCALL ID argumentlist);
+
+argumentlist[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
+                : (a1=argument[args] {
+                    $argTypes = $args;
+                } (COMMA argument[args])*)?
+                -> ^(ARGUMENTLIST (argument+)?);
+
+argument[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
+                : expr {
+                    $argTypes = $args;
+                };
+
+funccalltail    : LPAREN! exprlist RPAREN!;
 
 statseq         : (stat)+
                 -> ^(STATS stat+);
@@ -839,53 +890,203 @@ whileloop       : WHILE expr DO statseq ENDDO SEMI
                 -> ^(WHILE expr statseq);
 forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI
                 -> ^(FOR ID ASSIGN indexexpr indexexpr statseq);
-returnstatrule  : RETURN^ expr SEMI!;
+returnstatrule  : RETURN^ expr {
+                    // Check expr and the function's return type agreement here
+                } SEMI!;
 breakstatrule   : BREAK^ SEMI!;
-stat            : idstatrule | ifthen | whileloop | forloop | returnstatrule | breakstatrule | block;
+stat            : (value ASSIGN) => assignrule 
+                | funccall SEMI!
+                | ifthen 
+                | whileloop 
+                | forloop 
+                | returnstatrule 
+                | breakstatrule 
+                | block;
 
 // Expressions
 
-expr            : logicexpr (logicop^ logicexpr)*;
-logicexpr       : compareexpr (compareop^ compareexpr)*;
-compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
-addsubexpr      : exprlit (multdivop^ exprlit)*;
-exprlit         : tiger_const 
-                | ID^ (valuetail | funccalltail)
-                | LPAREN! expr RPAREN!;
 
-// Expressions for the purpose of not allowing nested function calls
+// expressions can either be numerical or boolean
+// Handle boolean before numerical
+// Match tiger_consts, then values, then (expr) bin (expr)
 
-f_expr            : f_logicexpr (logicop^ f_logicexpr)*;
-f_logicexpr       : f_compareexpr (compareop^ f_compareexpr)*;
-f_compareexpr     : f_addsubexpr (addsubop^ f_addsubexpr)*;
-f_addsubexpr      : f_exprlit (multdivop^ f_exprlit)*;
-f_exprlit         : tiger_const | value | LPAREN! f_expr RPAREN!;
+expr returns [SemanticObject typeChecker, boolean isBool]
+        : (logicexpr) => logicexpr {
+            $typeChecker = $logicexpr.typeChecker;
+            $isBool = $logicexpr.isBool;
+        }
+        | (compareexpr) => compareexpr {
+            $typeChecker = $compareexpr.typeChecker;
+            $isBool = $compareexpr.isBool;
+        }
+        | (addsubexpr) => addsubexpr {
+            $typeChecker = $addsubexpr.typeChecker;
+            $isBool = $addsubexpr.isBool;
+        }
+        | (multdivexpr) => multdivexpr {
+            $typeChecker = $multdivexpr.typeChecker;
+            $isBool = $multdivexpr.isBool;
+        }
+        | LPAREN! a1=expr RPAREN! {
+            $typeChecker = $a1.typeChecker;
+            $isBool = $a1.isBool;
+        };
+
+logicexpr returns [SemanticObject typeChecker, boolean isBool]
+        : (tiger_const logicop) => tiger_const logicop expr {
+            $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $logicop.text, $logicexpr.start.getLine());
+            $isBool = true;
+        } -> ^(logicop tiger_const expr)
+        | (value logicop) => value logicop expr {
+            $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $logicop.text, $logicexpr.start.getLine());
+            $isBool = true;
+        } -> ^(logicop value expr)
+        | (LPAREN expr RPAREN logicop) => LPAREN a1=expr RPAREN logicop a2=expr {
+            $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $logicop.text, $logicexpr.start.getLine());
+            $isBool = true;
+        } -> ^(logicop expr expr);
+
+compareexpr returns [SemanticObject typeChecker, boolean isBool]
+        : (tiger_const compareop) => tiger_const compareop expr {
+            $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $compareop.text, $compareexpr.start.getLine());
+            $isBool = $tiger_const.isBool || $compareop.isBool || $expr.isBool;
+        } -> ^(compareop tiger_const expr)
+        | (value compareop) => value compareop expr {
+            $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $compareop.text, $compareexpr.start.getLine());
+            $isBool = $value.isBool || $compareop.isBool || $expr.isBool;
+        } -> ^(compareop value expr)
+        | (LPAREN expr RPAREN logicop) => LPAREN a1=expr RPAREN compareop a2=expr {
+            $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $compareop.text, $compareexpr.start.getLine());
+            $isBool = $a1.isBool || $compareop.isBool || $a2.isBool;
+        } -> ^(compareop expr expr);
+
+addsubexpr returns [SemanticObject typeChecker, boolean isBool]
+        : (tiger_const addsubop) => tiger_const addsubop expr {
+            $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
+            $isBool = $tiger_const.isBool || $addsubop.isBool || $expr.isBool;
+        } -> ^(addsubop tiger_const expr)
+        | (value addsubop) => value addsubop expr {
+            $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
+            $isBool = $value.isBool || $addsubop.isBool || $expr.isBool;
+        } -> ^(addsubop value expr)
+        | (LPAREN expr RPAREN addsubop) => LPAREN a1=expr RPAREN addsubop a2=expr {
+            $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
+            $isBool = $a1.isBool || $addsubop.isBool || $a2.isBool;
+        } -> ^(addsubop expr expr);
+
+multdivexpr returns [SemanticObject typeChecker, boolean isBool]
+        : (tiger_const multdivop) => tiger_const multdivop expr {
+            $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $multdivop.text, $multdivop.start.getLine());
+            $isBool = $tiger_const.isBool || $multdivop.isBool || $expr.isBool;
+        } -> ^(multdivop tiger_const expr)
+        | tiger_const {
+            $typeChecker = $tiger_const.typeChecker;
+            $isBool = $tiger_const.isBool;
+        }
+        | (value multdivop) => value multdivop expr {
+            $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $multdivop.text, $multdivop.start.getLine());
+            $isBool = $value.isBool || $multdivop.isBool || $expr.isBool;
+        } -> ^(multdivop value expr)
+        | value {
+            $typeChecker = $value.typeChecker;
+            $isBool = $value.isBool;
+        }
+        | (LPAREN expr RPAREN multdivop) => LPAREN a1=expr RPAREN multdivop a2=expr {
+            $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $multdivop.text, $multdivop.start.getLine());
+            $isBool = $a1.isBool || $multdivop.isBool || $a2.isBool;
+        } -> ^(multdivop expr expr);
 
 // Constant/Value
-tiger_const returns [PrimitiveType type]
+tiger_const returns [SemanticObject typeChecker, boolean isBool]
         : INTLIT {
-            $type = PrimitiveType.TIGER_INT;
+            $typeChecker = new SemanticObject(true, symbolTable.getTigerInt(), $INTLIT.text);
+            $isBool = false; 
         }
         | FIXEDPTLIT {
-            $type = PrimitiveType.TIGER_FIXEDPT;
+            $typeChecker = new SemanticObject(true, symbolTable.getTigerFixedpt(), $FIXEDPTLIT.text);
+            $isBool = false;
         };
-value           : ID valuetail
-                -> ^(VALUE ID valuetail);
-valuetail       : (LBRACK indexexpr RBRACK (LBRACK indexexpr RBRACK)?)?
-                -> ^(VALUETAIL (indexexpr (indexexpr)?)?);
+
+
+value returns [SemanticObject typeChecker, boolean isBool]
+                : (ID LBRACK indexexpr RBRACK LBRACK)
+                => ID LBRACK a1=indexexpr RBRACK LBRACK a2=indexexpr RBRACK {
+                    SymbolTableEntry variable = symbolTable.get(current_scope, $ID.text, false);
+                    if (variable == null || variable instanceof TypeTableEntry) {
+                        errorExists = true;
+                        System.out.print("Line " + $ID.getLine() + ": ");
+                        System.out.println($ID.text + " was either never declared or is declared as a type in the current scope.");
+                        $typeChecker = null;
+                    } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_INT_2D_ARR || (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_FIXEDPT_2D_ARR)) {
+                        $typeChecker = new SemanticObject(false, ((VarTableEntry)variable).getType(), $value.text);
+                    } else {
+                        errorExists = true;
+                        System.out.print("Line " + $ID.getLine() + ": ");
+                        System.out.println($ID.text + " is not a two-dimensional array.");
+                        $typeChecker = null;
+                    }
+                    $isBool = false;
+                } -> ^(VALUE ID indexexpr indexexpr)
+                | (ID LBRACK)
+                => ID LBRACK indexexpr RBRACK {
+                    SymbolTableEntry variable = symbolTable.get(current_scope, $ID.text, false);
+                    if (variable == null || variable instanceof TypeTableEntry) {
+                        errorExists = true;
+                        System.out.print("Line " + $ID.getLine() + ": ");
+                        System.out.println($ID.text + " was either never declared or is declared as a type in the current scope.");
+                        $typeChecker = null;
+                    } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_INT_ARR || (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR)) {
+                        $typeChecker = new SemanticObject(false, ((VarTableEntry)variable).getType(), $value.text);
+                    } else {
+                        errorExists = true;
+                        System.out.print("Line " + $ID.getLine() + ": ");
+                        System.out.println($ID.text + " is not a one-dimensional array.");
+                        $typeChecker = null;
+                    }
+                    $isBool = false;
+                } -> ^(VALUE ID indexexpr)
+                | ID {
+                    SymbolTableEntry variable = symbolTable.get(current_scope, $ID.text, false);
+                    if (variable == null || variable instanceof TypeTableEntry) {
+                        errorExists = true;
+                        System.out.print("Line " + $ID.getLine() + ": ");
+                        System.out.println($ID.text + " was either never declared or is declared as a type in the current scope.");
+                        $typeChecker = null;
+                    } else {
+                        SymbolTableEntry type = ((VarTableEntry)variable).getType();
+                        $typeChecker = new SemanticObject(false, type, $ID.text); 
+                    }
+                    $isBool = false;
+                } -> ^(VALUE ID);
 
 // Expression list
 exprlist        : (expr (COMMA! expr)*)?;
-f_exprlist      : (f_expr (COMMA f_expr)*)?
-                -> ^(F_EXPRLIST (f_expr+)?);
 
 // Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;
 indexmultexpr   : indexlit (multdivop^ indexlit)*; 
-indexlit        : INTLIT | ID | FIXEDPTLIT | LPAREN! indexexpr RPAREN!;
+indexlit        : tiger_const | ID | LPAREN! indexexpr RPAREN!;
 
 // Binary Operators
-multdivop       : MULT | DIV;
-addsubop        : PLUS | MINUS;
-compareop       : EQ | NEQ | LESSER | LESSEREQ | GREATER | GREATEREQ;
-logicop         : AND | OR;
+// numerical
+addsubop returns [boolean isBool]
+                : (PLUS | MINUS) {
+                    $isBool = false;
+                };
+multdivop returns [boolean isBool]      
+                : (MULT | DIV) {
+                    $isBool = false;
+                };
+// boolean
+compareop returns [boolean isBool]
+                : (EQ | NEQ | LESSER | LESSEREQ | GREATER | GREATEREQ) {
+                    if (tooManyCompareOp) {
+                        validBoolExpr = false;
+                    }
+                    tooManyCompareOp = true;
+                    $isBool = true;
+                };
+logicop returns [boolean isBool]
+                : (AND | OR) {
+                    $isBool = true;
+                };

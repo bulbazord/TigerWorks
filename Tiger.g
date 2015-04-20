@@ -439,6 +439,7 @@ fragment UPPERCASE
 // Parser rules
 // These are for a test only. Everything will change later
 
+//TODO
 tigerprogram returns [SymbolTable symbolTable, boolean errorExists]
     : typedecllist functdecllist mainfunction EOF {
         $symbolTable = symbolTable;
@@ -452,6 +453,7 @@ typedecllist    : (typedecl)*
 typedecl        : TYPE ID EQ type[$ID.text] SEMI
                 -> ^(TYPEDECL TYPE ID EQ type);
 
+//TODO
 type[String name]
                 : basetype {
                     try {
@@ -500,6 +502,7 @@ type[String name]
                     }
                 } -> ^(TYPE ARRAY INTLIT basetype);
 
+//TODO
 basetype returns [int lineNumber]
                 : INT {
                     $lineNumber = $INT.getLine();
@@ -511,6 +514,7 @@ basetype returns [int lineNumber]
 //Function declaration list stuff
 functdecllist   : (functdecl)*
                 -> ^(FUNCTDECLLIST functdecl*);
+//TODO
 functdecl       : VOID_FUNCTION ID {
                     current_scope = new Scope(current_scope, $ID.text);
                     current_function = $ID.text;
@@ -560,11 +564,13 @@ typeid          : basetype
                 -> ^(TYPEID ID);
 
 // Paramater list stuff
+//TODO
 paramlist[List<TypeTableEntry> inParams] returns [List<TypeTableEntry> outParams]
                 : (a1=param[inParams] { 
                     $outParams = $a1.outParams;
                 } (COMMA a2=param[inParams])*)? -> ^(PARAMLIST param*);
 
+//TODO
 param[List<TypeTableEntry> inParams] returns [List<TypeTableEntry> outParams]
                 : ID COLON typeid {
                     try {
@@ -601,6 +607,7 @@ param[List<TypeTableEntry> inParams] returns [List<TypeTableEntry> outParams]
 // Block list stuff
 
 // Function Declaration list and main
+//TODO
 mainfunction    : VOID_MAIN {
                     try {
                         SymbolTableEntry mainFunc = new FunctionTableEntry(current_scope, "main", null, new ArrayList<TypeTableEntry>());
@@ -618,6 +625,7 @@ mainfunction    : VOID_MAIN {
                 -> ^(MAIN blocklist);
 
 // Block list
+//TODO
 blocklist       : (block)+ -> ^(BLOCKLIST block+);
 block           : BEGIN {
                     current_scope = new Scope(current_scope);
@@ -636,6 +644,7 @@ vardecllist     : (vardecl)*
 
 
 /* DECLARE VARIABLE*/
+//TODO
 vardecl         : (VAR idlist COLON typeid ASSIGN)
                 => VAR idlist COLON typeid ASSIGN tiger_const SEMI
                 {
@@ -855,6 +864,7 @@ idlist          : ID (COMMA ID)*
 
  */
  
+//TODO
 assignrule      : (value ASSIGN funccall) 
 
                 => value ASSIGN funccall SEMI {
@@ -903,6 +913,7 @@ assignrule      : (value ASSIGN funccall)
                 }
                 -> ^(ASSIGN value expr);
 
+//TODO
 funccall returns [String name]
                 : ID LPAREN argumentlist[new ArrayList<SemanticObject>()] RPAREN {
                     SymbolTableEntry function = symbolTable.get(global_scope, $ID.text, true);
@@ -933,12 +944,14 @@ funccall returns [String name]
                 }
                 -> ^(FUNCCALL ID argumentlist);
 
+//TODO
 argumentlist[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
                 : (a1=argument[args] {
                     $argTypes = $args;
                 } (COMMA argument[args])*)?
                 -> ^(ARGUMENTLIST (argument+)?);
 
+//TODO
 argument[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
                 : expr {
                     if (!$expr.isBool) {
@@ -950,6 +963,7 @@ argument[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
 statseq         : (stat)+
                 -> ^(STATS stat+);
 
+//TODO
 ifthen          : (IF expr THEN statseq ELSE) 
                 => IF expr {
                     if ($expr.isBool == false) {
@@ -968,6 +982,7 @@ ifthen          : (IF expr THEN statseq ELSE)
                 } THEN statseq ENDIF SEMI
                 -> ^(IF expr statseq);
 
+//TODO
 whileloop       : WHILE expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
@@ -976,8 +991,10 @@ whileloop       : WHILE expr {
                     }
                 } DO statseq ENDDO SEMI
                 -> ^(WHILE expr statseq);
+//TODO
 forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI
                 -> ^(FOR ID ASSIGN indexexpr indexexpr statseq);
+//TODO
 returnstatrule  : RETURN^ expr {
                     SymbolTableEntry function = symbolTable.get(global_scope, current_function, true);
                     if (!(((FunctionTableEntry)function).getReturnType().equals($expr.typeChecker.getType())) && !(((FunctionTableEntry)function).getReturnType().equals(symbolTable.getTigerFixedpt()) && ($expr.typeChecker.getType().equals(symbolTable.getTigerInt())))) {
@@ -1003,6 +1020,7 @@ stat            : (value ASSIGN) => assignrule
 // Handle boolean before numerical
 // Match tiger_consts, then values, then (expr) bin (expr)
 
+//TODO
 expr returns [SemanticObject typeChecker, boolean isBool]
         : (logicexpr) => logicexpr {
             $typeChecker = $logicexpr.typeChecker;
@@ -1025,6 +1043,7 @@ expr returns [SemanticObject typeChecker, boolean isBool]
             $isBool = $a1.isBool;
         };
 
+//TODO
 logicexpr returns [SemanticObject typeChecker, boolean isBool]
         : (tiger_const logicop) => tiger_const logicop expr {
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $logicop.text, $logicexpr.start.getLine());
@@ -1039,6 +1058,7 @@ logicexpr returns [SemanticObject typeChecker, boolean isBool]
             $isBool = true;
         } -> ^(logicop expr expr);
 
+//TODO
 compareexpr returns [SemanticObject typeChecker, boolean isBool]
         : (tiger_const compareop) => tiger_const compareop expr {
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $compareop.text, $compareexpr.start.getLine());
@@ -1053,6 +1073,7 @@ compareexpr returns [SemanticObject typeChecker, boolean isBool]
             $isBool = $a1.isBool || $compareop.isBool || $a2.isBool;
         } -> ^(compareop expr expr);
 
+//TODO
 addsubexpr returns [SemanticObject typeChecker, boolean isBool]
         : (tiger_const addsubop) => tiger_const addsubop expr {
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
@@ -1067,6 +1088,7 @@ addsubexpr returns [SemanticObject typeChecker, boolean isBool]
             $isBool = $a1.isBool || $addsubop.isBool || $a2.isBool;
         } -> ^(addsubop expr expr);
 
+//TODO
 multdivexpr returns [SemanticObject typeChecker, boolean isBool]
         : (tiger_const multdivop) => tiger_const multdivop expr {
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $multdivop.text, $multdivop.start.getLine());
@@ -1090,6 +1112,7 @@ multdivexpr returns [SemanticObject typeChecker, boolean isBool]
         } -> ^(multdivop expr expr);
 
 // Constant/Value
+//TODO
 tiger_const returns [SemanticObject typeChecker, boolean isBool]
         : INTLIT {
             $typeChecker = new SemanticObject(true, symbolTable.getTigerInt(), $INTLIT.text);
@@ -1101,6 +1124,7 @@ tiger_const returns [SemanticObject typeChecker, boolean isBool]
         };
 
 
+//TODO
 value returns [String name, SemanticObject typeChecker, boolean isBool]
                 : (ID LBRACK indexexpr RBRACK LBRACK)
                 => ID LBRACK a1=indexexpr RBRACK LBRACK a2=indexexpr RBRACK {
@@ -1165,6 +1189,7 @@ indexlit        : tiger_const | ID | LPAREN! indexexpr RPAREN!;
 
 // Binary Operators
 // numerical
+// TODO
 addsubop returns [boolean isBool]
                 : (PLUS | MINUS) {
                     $isBool = false;
@@ -1174,6 +1199,7 @@ multdivop returns [boolean isBool]
                     $isBool = false;
                 };
 // boolean
+//TODO
 compareop returns [boolean isBool]
                 : (EQ | NEQ | LESSER | LESSEREQ | GREATER | GREATEREQ) {
                     $isBool = true;

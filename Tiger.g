@@ -439,7 +439,6 @@ fragment UPPERCASE
 // Parser rules
 // These are for a test only. Everything will change later
 
-//TODO
 tigerprogram returns [SymbolTable symbolTable, boolean errorExists]
     : typedecllist functdecllist mainfunction EOF {
         $symbolTable = symbolTable;
@@ -453,7 +452,6 @@ typedecllist    : (typedecl)*
 typedecl        : TYPE ID EQ type[$ID.text] SEMI
                 -> ^(TYPEDECL TYPE ID EQ type);
 
-//TODO
 type[String name]
                 : basetype {
                     try {
@@ -502,7 +500,6 @@ type[String name]
                     }
                 } -> ^(TYPE ARRAY INTLIT basetype);
 
-//TODO
 basetype returns [int lineNumber]
                 : INT {
                     $lineNumber = $INT.getLine();
@@ -903,7 +900,9 @@ assignrule      : (value ASSIGN funccall)
                             System.out.println("Cannot assign a boolean to a variable.");
                         } else {
                             SemanticObject assignExpr = $expr.typeChecker;
-                            if (assignExpr == null || (!assignExpr.getType().equals(((VarTableEntry)variable).getType()) && !(((VarTableEntry)variable).getType().equals(symbolTable.getTigerFixedpt()) && (assignExpr.getType().equals(symbolTable.getTigerInt()))))) {
+                            SemanticObject valueExpr = $value.typeChecker;
+                            if (assignExpr == null || valueExpr == null || (!(assignExpr.getType().equals(valueExpr.getType())))
+                                && !(assignExpr.getType().equals(symbolTable.getTigerInt()) && valueExpr.getType().equals(symbolTable.getTigerFixedpt()))) {
                                 errorExists = true;
                                 System.out.print("Line " + $ASSIGN.getLine() + ": ");
                                 System.out.println("The variable " + $value.text + " cannot be assigned to the expression " + $expr.text + ".");
@@ -934,7 +933,7 @@ funccall returns [String name]
                                     if (!originalParamList.get(i).equals((TypeTableEntry)(givenParamList.get(i).getType())) && !(originalParamList.get(i).equals(symbolTable.getTigerFixedpt()) && ((TypeTableEntry)(givenParamList.get(i).getType())).equals(symbolTable.getTigerInt()))) {
                                         errorExists = true;
                                         System.out.print("Line " + $ID.getLine() + ": ");
-                                        System.out.println("Parameter " + (i+1) + "is the incorrect type.");
+                                        System.out.println("Parameter " + (i+1) + " is the incorrect type.");
                                     }
                                 }
                             }
@@ -1134,8 +1133,28 @@ value returns [String name, SemanticObject typeChecker, boolean isBool]
                         System.out.print("Line " + $ID.getLine() + ": ");
                         System.out.println($ID.text + " was either never declared or is declared as a type in the current scope.");
                         $typeChecker = null;
-                    } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_INT_2D_ARR || (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_FIXEDPT_2D_ARR)) {
-                        $typeChecker = new SemanticObject(false, ((VarTableEntry)variable).getType(), $value.text);
+                    } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_INT_2D_ARR) {
+                        int first = Integer.parseInt($a1.text);
+                        int second = Integer.parseInt($a2.text);
+                        if ((first > ((VarTableEntry)variable).getType().getLength() || first < 0) ||
+                            (second > ((VarTableEntry)variable).getType().getHeight() || second < 0)) {
+                            System.out.print("Line " + $ID.getLine() + ": ");
+                            System.out.println("Out of bounds index ");
+                            $typeChecker = null;
+                        } else {
+                            $typeChecker = new SemanticObject(false, symbolTable.getTigerInt(), $value.text);
+                        }
+                    } else if ((((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_FIXEDPT_2D_ARR)) {
+                        int first = Integer.parseInt($a1.text);
+                        int second = Integer.parseInt($a2.text);
+                        if ((first > ((VarTableEntry)variable).getType().getLength() || first < 0) ||
+                            (second > ((VarTableEntry)variable).getType().getHeight() || second < 0)) {
+                            System.out.print("Line " + $ID.getLine() + ": ");
+                            System.out.println("Out of bounds index ");
+                            $typeChecker = null;
+                        } else {
+                            $typeChecker = new SemanticObject(false, symbolTable.getTigerFixedpt(), $value.text);
+                        }
                     } else {
                         errorExists = true;
                         System.out.print("Line " + $ID.getLine() + ": ");
@@ -1153,8 +1172,24 @@ value returns [String name, SemanticObject typeChecker, boolean isBool]
                         System.out.print("Line " + $ID.getLine() + ": ");
                         System.out.println($ID.text + " was either never declared or is declared as a type in the current scope.");
                         $typeChecker = null;
-                    } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_INT_ARR || (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR)) {
-                        $typeChecker = new SemanticObject(false, ((VarTableEntry)variable).getType(), $value.text);
+                    } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_INT_ARR) { 
+                        int first = Integer.parseInt($indexexpr.text);
+                        if (first > ((VarTableEntry)variable).getType().getLength() || first < 0) {
+                            System.out.print("Line " + $ID.getLine() + ": ");
+                            System.out.println("Out of bounds index ");
+                            $typeChecker = null;
+                        } else {
+                            $typeChecker = new SemanticObject(false, symbolTable.getTigerInt(), $value.text);
+                        }
+                    } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR) { 
+                        int first = Integer.parseInt($indexexpr.text);
+                        if (first > ((VarTableEntry)variable).getType().getLength() || first < 0) {
+                            System.out.print("Line " + $ID.getLine() + ": ");
+                            System.out.println("Out of bounds index ");
+                            $typeChecker = null;
+                        } else {
+                            $typeChecker = new SemanticObject(false, symbolTable.getTigerFixedpt(), $value.text);
+                        }
                     } else {
                         errorExists = true;
                         System.out.print("Line " + $ID.getLine() + ": ");

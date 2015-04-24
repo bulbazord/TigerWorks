@@ -101,11 +101,29 @@ public class SymbolTable {
      *  - The standard library functions
      */
     public void setup(Scope globalScope) {
-        this.tigerInt = new TypeTableEntry(globalScope, "int", PrimitiveType.TIGER_INT, 0, 0);
-        this.tigerFixedpt = new TypeTableEntry(globalScope, "fixedpt", PrimitiveType.TIGER_FIXEDPT, 0, 0);
+        TypeTableEntry tigerIntType = new TypeTableEntry(globalScope, "int", PrimitiveType.TIGER_INT, 0, 0);
+        TypeTableEntry tigerFixedptType = new TypeTableEntry(globalScope, "fixedpt", PrimitiveType.TIGER_FIXEDPT, 0, 0);
+        this.tigerInt = tigerIntType;
+        this.tigerFixedpt = tigerFixedptType;
+
+        SymbolTableEntry printi = new FunctionTableEntry(globalScope, "printi", null, tigerIntType);
+        SymbolTableEntry printf = new FunctionTableEntry(globalScope, "printf", null, tigerFixedptType);
+        SymbolTableEntry readi = new FunctionTableEntry(globalScope, "readi", tigerIntType);
+        SymbolTableEntry readf = new FunctionTableEntry(globalScope, "readf", tigerFixedptType);
+        SymbolTableEntry flush = new FunctionTableEntry(globalScope, "flush", null);
+        SymbolTableEntry not = new FunctionTableEntry(globalScope, "not", tigerIntType, tigerIntType);
+        SymbolTableEntry exit = new FunctionTableEntry(globalScope, "exit", null, tigerIntType);
+
         try {
             put(this.tigerInt);
             put(this.tigerFixedpt);
+            put(printi);
+            put(printf);
+            put(readi);
+            put(readf);
+            put(flush);
+            put(not);
+            put(exit);
         } catch (NameSpaceException nse) {
             System.out.println("You had trouble inserting built-in types/functions into the" +
                                 " symbol table? You must be really unlucky");

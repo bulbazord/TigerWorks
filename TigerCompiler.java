@@ -55,7 +55,7 @@ public class TigerCompiler {
                 // Get symbol table from parser
                 SymbolTable symbolTable = ret.symbolTable;
                 boolean errorsExist = ret.errorExists;
-                if (!errorsExist) {
+                /*if (!errorsExist) {
                     // Try to walk the tree
                     CommonTreeNodeStream ctns = new CommonTreeNodeStream(ast);
                     try {
@@ -64,7 +64,7 @@ public class TigerCompiler {
                     } catch (Exception e) {
                         System.out.println("Semantic error occurred! " + e.getMessage());
                     }
-                }
+                }*/
             }
         } catch (RecognitionException re) {
             System.out.println("A recognition exception has been thrown");

@@ -27,8 +27,10 @@ public class IRGenerator {
          try {
              FileWriter writer = new FileWriter(fileName);
              for (String s: list) {
+                 System.out.println(s);
                  writer.write(s);
              }
+             writer.close();
          } catch (IOException e) {
              System.out.println("ERROR: Could not write IR to file " + fileName);
              return false;

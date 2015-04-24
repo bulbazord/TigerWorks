@@ -65,6 +65,8 @@ tokens {
     private SymbolTable symbolTable = new SymbolTable(global_scope);
     private String current_function;
     private boolean errorExists = false;
+    private static final String DEFAULT_FILENAME = "ir.tigir";
+    private IRGenerator generator = new IRGenerator();
 
     public SemanticObject evaluateType(SemanticObject a1, SemanticObject a2, String binaryOp, int lineNumber) {
         if (a1 == null && a2 == null) {
@@ -443,14 +445,14 @@ tigerprogram returns [SymbolTable symbolTable, boolean errorExists]
     : typedecllist functdecllist mainfunction EOF {
         $symbolTable = symbolTable;
         $errorExists = errorExists;
+        generator.writeToFile(DEFAULT_FILENAME);
     }
     -> ^(PROG typedecllist functdecllist mainfunction);
 
 // typedecllist stuff
-typedecllist    : (typedecl)*
-                -> ^(TYPEDECLLIST typedecl*);
+typedecllist    : (typedecl)*;
 typedecl        : TYPE ID EQ type[$ID.text] SEMI
-                -> ^(TYPEDECL TYPE ID EQ type);
+                -> ^(EQ ID type);
 
 type[String name]
                 : basetype {
@@ -483,7 +485,7 @@ type[String name]
                         System.out.println(nse.getMessage());
                         errorExists = true;
                     }
-                } -> ^(TYPE ARRAY INTLIT INTLIT basetype)
+                } -> ^(TYPE TWODEE INTLIT INTLIT basetype)
                 | ARRAY LBRACK a1=INTLIT RBRACK OF basetype {
                     try {
                         if ($basetype.text.equals("int")) {
@@ -503,18 +505,19 @@ type[String name]
 basetype returns [int lineNumber]
                 : INT {
                     $lineNumber = $INT.getLine();
-                } -> ^(BASETYPE INT)
+                }
                 | FIXEDPT {
                     $lineNumber = $FIXEDPT.getLine();
-                } -> ^(BASETYPE FIXEDPT);
+                }
+                ;
 
 //Function declaration list stuff
-functdecllist   : (functdecl)*
-                -> ^(FUNCTDECLLIST functdecl*);
+functdecllist   : (functdecl)*;
 //TODO
 functdecl       : VOID_FUNCTION ID {
                     current_scope = new Scope(current_scope, $ID.text);
                     current_function = $ID.text;
+                    generator.addFunctionDeclaration($ID.text);
                 } LPAREN paramlist[new ArrayList<TypeTableEntry>()] RPAREN BEGIN {
                     current_scope = new Scope(current_scope);
                     try {
@@ -534,6 +537,7 @@ functdecl       : VOID_FUNCTION ID {
                 | typeid FUNCTION ID {
                     current_scope = new Scope(current_scope, $ID.text);
                     current_function = $ID.text;
+                    generator.addFunctionDeclaration($ID.text);
                 } LPAREN paramlist[new ArrayList<TypeTableEntry>()] RPAREN BEGIN {
                     current_scope = new Scope(current_scope);
                     SymbolTableEntry type = symbolTable.get(current_scope, $typeid.text, false);
@@ -555,10 +559,10 @@ functdecl       : VOID_FUNCTION ID {
                     current_scope = current_scope.getParent();
                 } SEMI
                 -> ^(FUNCTION typeid ID paramlist blocklist);
-typeid          : basetype 
-                -> ^(TYPEID basetype)
+
+typeid          : basetype
                 | ID
-                -> ^(TYPEID ID);
+                ;
 
 // Paramater list stuff
 //TODO
@@ -623,7 +627,7 @@ mainfunction    : VOID_MAIN {
 
 // Block list
 //TODO
-blocklist       : (block)+ -> ^(BLOCKLIST block+);
+blocklist       : (block)+;
 block           : BEGIN {
                     current_scope = new Scope(current_scope);
                 } declsegment statseq END {
@@ -632,10 +636,8 @@ block           : BEGIN {
                 -> ^(BLOCK declsegment statseq);
 
 // Declaration statements
-declsegment     : typedecllist vardecllist
-                -> ^(DECLSEGMENT typedecllist vardecllist);
-vardecllist     : (vardecl)*
-                -> ^(VARDECLLIST vardecl*);
+declsegment     : typedecllist vardecllist;
+vardecllist     : (vardecl)*;
 
 
 
@@ -959,8 +961,7 @@ argument[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
                     }
                 };
 
-statseq         : (stat)+
-                -> ^(STATS stat+);
+statseq         : (stat)+;
 
 //TODO
 ifthen          : (IF expr THEN statseq ELSE) 

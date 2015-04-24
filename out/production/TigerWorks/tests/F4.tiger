@@ -1,0 +1,10 @@
+void main()
+begin
+	begin
+		var X : notFixedPt := 112;
+		begin
+			X!;
+			
+		end;
+	end;
+end;

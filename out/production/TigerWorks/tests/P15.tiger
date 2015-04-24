@@ -1,0 +1,132 @@
+type flag = int;
+type fixArr = array[10] of fixedpt;
+
+/*make a func_decl_list*/
+/*test for loops*/
+flag function fortest(loops:int)
+begin
+	begin
+		var i, counter: int := 0;
+		for i := 0 to loops - 1 do
+			counter := counter + 1;
+			if i = 2 then
+				break;
+			endif;
+		enddo;
+		if counter <> loops then 
+			return 0; 
+		else
+			return 1;
+		endif;
+	end;
+end;
+
+/*test nested for loops*/
+fixedpt function nestedfortest(outerloops:int, innerloops:int)
+begin
+	begin
+		var i, j, counter: int := 0;
+		for i := 0 to outerloops - 1 do
+			for j := 0 to innerloops - 1 do
+				counter := counter + 1;
+			enddo;
+		enddo;
+		if counter <> innerloops*outerloops then 
+			return 0.0; 
+		else
+			return 1.103;
+		endif;
+	end;
+end;
+
+/*test interleaving void return function with type return functions*/
+void function void_func_test_1()
+begin
+	begin
+		x := 1.5;
+	end;
+end;
+
+/*test two consecutive functions with void return*/
+void function void_func_test_2()
+begin
+	begin
+		x := 1.5;
+	end;
+end;
+
+/*test 1d arrays*/
+int function arrtest()
+begin
+	begin
+		type intArray = array [100] of int;
+		var arr: intArray := 0;
+		var i: int;
+		for i := 1 to 100 do	/*I think this is how indexing works*/
+			arr[i] := 1;
+		enddo;
+		
+		i:= 1;
+		while i <= 100 do
+			if arr[i] >= 1 then
+				return 0;
+			endif;
+		enddo;
+		return 1;
+	end;
+end;
+/*test 2d arrays*/
+int function arr2dtest()
+begin
+	begin
+		type intArray = array [100] [100] of int;
+		var arr: intArray := 0;
+		var i, j: int;
+		for i := 1 to 100 do	/*I think this is how indexing works*/
+			for j := 1 to 100 do
+				arr[i-1][j-1] := 1;
+			enddo;
+		enddo;
+		
+		i:= 1;
+		while i <= 100 do
+			for j:= 1 to 100 do
+				if arr[i+1][j*2] > 1 then
+					return 0;
+				endif;
+			enddo;
+		enddo;
+		return 1;
+	end;
+end;
+
+
+
+
+/*test nested if/operators*/
+int function condtest()
+begin
+	begin
+		if 1+5*6 = 31 & (5 + 6)*2 = 22 | 1.5/6 <= 0 then
+			if 5 = 6 then
+				return 0;
+			else
+				return 1;
+			endif;
+		endif;
+	end;
+end;
+
+void main()
+begin
+	begin
+		var testflag: flag := 0;
+		var testFixedpt : fixedpt;
+
+		testFixedpt := fortest(100);
+		testflag := nestedfortest(4, 25);
+		testflag := arrtest();
+		testflag := arr2dtest();
+		testflag := condtest();
+	end;
+end;

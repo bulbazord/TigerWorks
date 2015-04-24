@@ -1,0 +1,17 @@
+type FibonacciArray = array [100] of int;
+void main()
+begin
+	begin
+		var fib : FibonacciArray;
+		var m : 3;
+		printi(0);
+		fib[1] := 1;
+		printi(fib[1]);
+		fib[2] := 1;
+		printi(fib[2]);
+		for n := 3 to 100 do /* for loop for fibonacci computation */
+			fib[n] := fib[n-1] + fib[n-2];
+			printi(fib[n]); /* print out the current fibonacci number */
+		enddo;
+	end;
+end;

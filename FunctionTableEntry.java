@@ -1,3 +1,4 @@
+import java.util.Arrays;
 import java.util.List;
 
 public class FunctionTableEntry extends SymbolTableEntry {
@@ -5,6 +6,11 @@ public class FunctionTableEntry extends SymbolTableEntry {
     private TypeTableEntry returnType;
 
     private List<TypeTableEntry> parameterList;
+
+    public FunctionTableEntry(Scope scope, String name, SymbolTableEntry returnType, TypeTableEntry... parameters) {
+        this(scope, name, returnType, Arrays.asList(parameters));
+    }
+
 
     public FunctionTableEntry(Scope scope, String name, SymbolTableEntry returnType, List<TypeTableEntry> parameterList) {
         super(scope, name);

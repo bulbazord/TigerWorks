@@ -1,0 +1,143 @@
+/*Type Declaration List*/
+type int_a = int;
+type fixedpt_b = fixedpt;
+type int_array = array [3] of int;
+type fixedpt_array = array [4] of fixedpt;
+type int_double_array = array [2][3] of int;
+type fixedpt_double_array = array [3][4] of fixedpt;
+
+/*Function Declaration List*/
+int function compare_int(a:int, b:int)
+    begin
+        begin
+            type int_b = int;
+            var apple, banana : int := 0;
+            var coconut: int;
+            
+            coconut := 1;
+            
+            if (a > b) then
+                begin
+                    apple := 1;
+                end;
+            else
+                apple := 2;
+            endif;
+            
+            return apple;
+        end;
+    end;
+
+fixedpt function constant_add(a:fixedpt, b:fixedpt)
+    begin
+        begin
+            while (a<100.0) do
+                if (a>90.0) then
+                    break;
+                endif;
+                a := a + b;
+            enddo;
+            
+            return a;
+        end;
+    end;
+    
+int function sum_int_array(a:int_array, b:int_array)
+    begin
+        begin
+            var sum : int := 0;
+            var i : int := 0;
+            for i := 1 to 3 do
+                sum := sum + a[i];
+                sum := sum + b[i];
+            enddo;
+            
+            return sum;
+        end;
+    end;
+
+int function sum_double_array(a:int_double_array, b:int_double_array)
+    begin
+        begin
+            var sum : int := 0;
+            for i := 1 to 2 do
+                sum := sum + a[i][i+1];
+                sum := sum + b[i][i+1];
+            enddo;
+            
+            return sum;
+        end;
+    end;
+    
+void function print_fun()
+    begin
+        begin
+            printi(1);
+        end;
+        begin
+            printi(2);
+        end;
+    end;        
+    
+/*Main Function*/
+void main()
+    begin
+        begin
+            var result1: int;
+            var result2: fixedpt;
+            var sum:int;
+            
+            var a: int_array;
+            var b: int_array;
+            
+            var c: int_double_array;
+            var d: int_double_array;
+            
+            var sum : int := 1;
+            var i : int := 0;
+            
+            a[1] := 1;
+            a[2] := 2;
+            a[3] := 3;
+            b[1] := 4;
+            b[2] := 5;
+            b[3] := 6;
+            
+            c[1][1] := 1;
+            c[1][2] := 2;
+            c[1][3] := 3;
+            d[2][1] := 4;
+            d[2][2] := 5;
+            d[2][3] := 6;
+            
+            result1 := compare_int(10,20);
+            printi(result1);
+            
+            result2 := constant_add(5.0,7.5);
+            printf(result2);
+            
+            result1 := sum_int_array(a,b);
+            printi(result1);
+            
+            result1 := sum_double_array(c,d);
+            printi(result1);
+            
+            print_fun();
+            
+            if (1<2) then
+                printi(100);
+            else
+                printi(200);
+            endif;
+            
+            while(sum<10) do
+                sum := sum + 1;
+                printi(sum);
+            enddo;    
+            
+            for i := 1 to 2 do
+                printi(i);
+            enddo;
+            
+        end;        
+    end;

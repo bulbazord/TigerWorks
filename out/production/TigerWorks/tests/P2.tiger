@@ -1,0 +1,36 @@
+int function pow(n : int, x : int)
+begin
+	begin
+		var i, ans: int := 1;
+		for n := 1 to n do /* for loop for n^x computation */
+			ans := ans * n;
+		enddo;
+	end;
+end;
+
+int function negative(n : int) 
+begin
+	begin
+		return (0 - n);
+	end;
+end;
+
+int function absolute_value(n : int)
+begin
+	begin
+		var result: int;
+		if (n > 0) then
+			return n;
+		else
+			result := negative(1);
+			return (n * (result));
+		endif;
+	end;
+end;
+
+void main()
+begin
+	begin
+		
+	end;
+end;

@@ -37,7 +37,13 @@ options {
 }
 
 // The starting point for the walk function. 
-walk            : ^(PROG typedecllist functdecllist mainfunction)
+walk            : ^(PROG typedecllist {
+                    System.out.println("Type Declarations");
+                } functdecllist {
+                    System.out.println("Function Declarations");
+                } mainfunction {
+                    System.out.println("Main Function");
+                })
                 {
                     // This should run at the end of the parsing
                     generator.writeToFile(DEFAULT_FILENAME);
@@ -58,18 +64,18 @@ basetype        : ^(BASETYPE INT)
 functdecllist   : ^(FUNCTDECLLIST functdecl*) ;
 
 functdecl       : ^(FUNCTION VOID ID {
-                      generator.addLabel($ID.text);
+                      //generator.addLabel($ID.text);
                   } paramlist {
-                      for (String param : $paramlist.params) {
+                      /*for (String param : $paramlist.params) {
                         generator.assignVar(param, "0");
-                      }
+                      }*/
                   } blocklist)
                 | ^(FUNCTION typeid ID {
-                      generator.addLabel($ID.text);
+                      //generator.addLabel($ID.text);
                   } paramlist {
-                      for (String param : $paramlist.params) {
+                      /*for (String param : $paramlist.params) {
                         generator.assignVar(param, "0");
-                      }
+                      }*/
                   } blocklist);
 
 typeid          : ^(TYPEID basetype)
@@ -89,7 +95,7 @@ param returns [String name]
                   } typeid);
 
 mainfunction    : ^(MAIN {
-                    generator.addLabel($MAIN.text);
+                    //generator.addLabel($MAIN.text);
                   } blocklist);
 
 blocklist       : ^(BLOCKLIST block+);
@@ -101,10 +107,12 @@ declsegment     : ^(DECLSEGMENT typedecllist vardecllist);
 vardecllist     :  ^(VARDECLLIST vardecl*);
 
 vardecl         :  ^(VARDECL idlist {
-                        for (String name : $idlist.names) {
+                        /*for (String name : $idlist.names) {
                             generator.assignVar(name, "0");
-                        }
-                   } typeid);
+                        }*/
+                   } typeid)
+                | ^(VARDECL idlist typeid ASSIGN tiger_const)
+                ;
 
 idlist returns [List<String> names] 
                 @init {
@@ -114,45 +122,71 @@ idlist returns [List<String> names]
                     $names.add($ID.text);
                 })+);
 
+assignrule      : ^(ASSIGN value funccall)
+                | ^(ASSIGN value expr)
+                ;
+
+funccall        : ^(FUNCCALL ID argumentlist);
+
 idstatrule      : ^(ASSIGN value expr)
                 | ^(FUNCCALL ID funccalltail);
 
-funccalltail    : LPAREN! f_exprlist RPAREN!;
+argumentlist    : ^(ARGUMENTLIST (argument+)?);
+
+argument        : expr;
+
+funccalltail    : LPAREN! exprlist RPAREN!;
 
 statseq         : ^(STATS stat+);
 
-ifthen          : ^(IF expr ^(THEN statseq) ^(ELSE statseq))
-                | ^(IF expr ^(THEN statseq));
+ifthen          : ^(IF expr statseq elsepart?)
+                | ^(IF expr statseq)
+                ;
+
+elsepart        : ^(ELSE statseq);
 
 whileloop       : ^(WHILE expr statseq);
 
 forloop         : ^(FOR ID ASSIGN indexexpr indexexpr statseq);
 
-returnstatrule  : RETURN^ expr SEMI!;
-breakstatrule   : BREAK^ SEMI!;
-stat            : idstatrule | ifthen | whileloop | forloop | returnstatrule 
-                | breakstatrule | block;
+returnstatrule  : RETURN^ expr;
+breakstatrule   : BREAK;
+stat            : assignrule
+                | funccall
+                | ifthen
+                | whileloop
+                | forloop
+                | returnstatrule
+                | breakstatrule
+                | block
+                ;
 
 
 // Expressions
 
-expr returns [Operator type]
-                : logicexpr (logicop^ logicexpr)*;
-logicexpr returns [Operator type]       
-                : compareexpr (compareop^ compareexpr)*;
-compareexpr     : addsubexpr (addsubop^ addsubexpr)*;
+expr            : logicexpr
+                | compareexpr
+                | addsubexpr
+                | multdivexpr
+                //| expr
+                ;
+logicexpr       : ^(logicop tiger_const expr)
+                | ^(logicop value expr)
+                | ^(logicop expr expr)
+                ;
+compareexpr     : ^(compareop tiger_const expr)
+                | ^(compareop value expr)
+                | ^(compareop expr expr)
+                ;
 addsubexpr      : ^(addsubop tiger_const expr) 
                 | ^(addsubop value expr)
-                | ^(addsubop expr expr);
-
-// Expressions for the purpose of not allowing nested function calls
-
-f_expr            : f_logicexpr (logicop^ f_logicexpr)*;
-f_logicexpr       : f_compareexpr (compareop^ f_compareexpr)*;
-f_compareexpr     : f_addsubexpr (addsubop^ f_addsubexpr)*;
-f_addsubexpr      : f_exprlit (multdivop^ f_exprlit)*;
-f_exprlit         : tiger_const | value | LPAREN! f_expr RPAREN!;
-
+                | ^(addsubop expr expr)
+                ;
+multdivexpr     : ^(multdivop tiger_const expr)
+                | tiger_const
+                | ^(multdivop value expr)
+                | ^(multdivop expr expr)
+                ;
 
 tiger_const       : INTLIT 
                   | FIXEDPTLIT;
@@ -163,7 +197,6 @@ value           : ^(VALUE ID indexexpr indexexpr)
 
 // Expression list
 exprlist        : (expr (COMMA! expr)*)?;
-f_exprlist      : ^(F_EXPRLIST (f_expr+)?);
 
 // Index expression
 indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;
@@ -180,10 +213,10 @@ addsubop returns [Operator type]
 compareop returns [Operator type]
                 : EQ {$type = Operator.EQ;}
                 | NEQ {$type = Operator.NEQ;}
-                | LESSER {$type = Operator.LESSER;}
-                | LESSEREQ {$type = Operator.LESSEREQ;}
-                | GREATER {$type = Operator.GREATER;}
-                | GREATEREQ {$type = Operator.GREATEREQ;};
+                | LESSER {$type = Operator.LT;}
+                | LESSEREQ {$type = Operator.LTE;}
+                | GREATER {$type = Operator.GT;}
+                | GREATEREQ {$type = Operator.GTE;};
 logicop returns [Operator type]
                 : AND {$type = Operator.AND;}
                 | OR {$type = Operator.OR;};

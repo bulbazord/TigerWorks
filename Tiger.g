@@ -67,6 +67,7 @@ tokens {
     private boolean errorExists = false;
     private static final String DEFAULT_FILENAME = "ir.tigir";
     private IRGenerator generator = new IRGenerator();
+    private String thenLabel;
 
     public SemanticObject evaluateType(SemanticObject a1, SemanticObject a2, String binaryOp, int lineNumber) {
         if (a1 == null && a2 == null) {
@@ -521,7 +522,6 @@ functdecl       : VOID_FUNCTION ID {
                     current_scope = new Scope(current_scope, $ID.text);
                     current_function = $ID.text;
                     generator.addFunctionDeclaration($ID.text);
-                    System.out.println($ID.text);
                 } LPAREN paramlist[new ArrayList<TypeTableEntry>()] RPAREN BEGIN {
                     current_scope = new Scope(current_scope);
                     try {
@@ -542,7 +542,6 @@ functdecl       : VOID_FUNCTION ID {
                     current_scope = new Scope(current_scope, $ID.text);
                     current_function = $ID.text;
                     generator.addFunctionDeclaration($ID.text);
-                    System.out.println($ID.text);
                 } LPAREN paramlist[new ArrayList<TypeTableEntry>()] RPAREN BEGIN {
                     current_scope = new Scope(current_scope);
                     SymbolTableEntry type = symbolTable.get(current_scope, $typeid.text, false);
@@ -638,10 +637,8 @@ mainfunction    : VOID_MAIN {
 blocklist       : (block)+ -> ^(BLOCKLIST block+);
 block           : BEGIN {
                     current_scope = new Scope(current_scope);
-                    System.out.println("New block");
                 } declsegment statseq END {
                     current_scope = current_scope.getParent();
-                    System.out.println("End block");
                 } SEMI 
                 -> ^(BLOCK declsegment statseq);
 
@@ -987,21 +984,39 @@ statseq         : (stat)+
 
 //TODO
 ifthen          : (IF expr THEN statseq ELSE) 
-                => IF expr {
+                => IF {
+                    thenLabel = generator.generateLabel();
+                } expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
                         System.out.print("Line " + $IF.getLine() + ": ");
                         System.out.println("Conditional is not a boolean.");
                     }
-                } THEN statseq ELSE statseq ENDIF SEMI
+                    String temp = thenLabel;
+                    thenLabel = generator.generateLabel();
+                    generator.addGoto(thenLabel);
+                    generator.addLabel(temp);
+                } THEN statseq ELSE {
+                    String end = generator.generateLabel();
+                    generator.addGoto(end);
+                    generator.addLabel(thenLabel);
+                } statseq ENDIF SEMI
                 -> ^(IF expr statseq ^(ELSE statseq)?)
-                | IF expr {
+                | IF {
+                    thenLabel = generator.generateLabel();
+                } expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
                         System.out.print("Line " + $IF.getLine() + ": ");
                         System.out.println("Conditional is not a boolean.");
                     }
-                } THEN statseq ENDIF SEMI
+                    String end = generator.generateLabel();
+                    generator.addGoto(end);
+                    generator.addLabel(thenLabel);
+                    thenLabel = end;
+                } THEN statseq ENDIF SEMI {
+                    generator.addLabel(thenLabel);
+                }
                 -> ^(IF expr statseq);
 
 //TODO
@@ -1133,28 +1148,112 @@ logicexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
 compareexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         : (tiger_const compareop) => tiger_const compareop expr {
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $compareop.text, $compareexpr.start.getLine());
-            $isBool = $tiger_const.isBool || $compareop.isBool || $expr.isBool;
+            $isBool = true;
             // IR Generation
-            $temp = "t-";
+            switch ($compareop.op) {
+                case EQ:
+                generator.addBREQ($tiger_const.text, $expr.temp, thenLabel);
+                break;
+
+                case NEQ:
+                generator.addBRNEQ($tiger_const.text, $expr.temp, thenLabel);
+                break;
+
+                case LT:
+                generator.addBRLT($tiger_const.text, $expr.temp, thenLabel);
+                break;
+
+                case LTE:
+                generator.addBRLEQ($tiger_const.text, $expr.temp, thenLabel);
+                break;
+
+                case GT:
+                generator.addBRGT($tiger_const.text, $expr.temp, thenLabel);
+                break;
+
+                case GTE:
+                generator.addBRGEQ($tiger_const.text, $expr.temp, thenLabel);
+                break;
+
+                default:
+                break;
+
+            }
         } -> ^(compareop tiger_const expr)
         | (value compareop) => value compareop expr {
             $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $compareop.text, $compareexpr.start.getLine());
-            $isBool = $value.isBool || $compareop.isBool || $expr.isBool;
-            // IR Generation
-            $temp = "t-";
+            $isBool = true;
+            // IR Generation 
+            switch ($compareop.op) {
+                case EQ:
+                generator.addBREQ($value.temp, $expr.temp, thenLabel);
+                break;
+
+                case NEQ:
+                generator.addBRNEQ($value.temp, $expr.temp, thenLabel);
+                break;
+
+                case LT:
+                generator.addBRLT($value.temp, $expr.temp, thenLabel);
+                break;
+
+                case LTE:
+                generator.addBRLEQ($value.temp, $expr.temp, thenLabel);
+                break;
+
+                case GT:
+                generator.addBRGT($value.temp, $expr.temp, thenLabel);
+                break;
+
+                case GTE:
+                generator.addBRGEQ($value.temp, $expr.temp, thenLabel);
+                break;
+
+                default:
+                break;
+
+            }       
         } -> ^(compareop value expr)
         | (LPAREN expr RPAREN logicop) => LPAREN a1=expr RPAREN compareop a2=expr {
             $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $compareop.text, $compareexpr.start.getLine());
-            $isBool = $a1.isBool || $compareop.isBool || $a2.isBool;
+            $isBool = true;
             // IR Generation
-            $temp = "t-";
+            switch ($compareop.op) {
+                case EQ:
+                generator.addBREQ($a1.temp, $a2.temp, thenLabel);
+                break;
+
+                case NEQ:
+                generator.addBRNEQ($a1.temp, $a2.temp, thenLabel);
+                break;
+
+                case LT:
+                generator.addBRLT($a1.temp, $a2.temp, thenLabel);
+                break;
+
+                case LTE:
+                generator.addBRLEQ($a1.temp, $a2.temp, thenLabel);
+                break;
+
+                case GT:
+                generator.addBRGT($a1.temp, $a2.temp, thenLabel);
+                break;
+
+                case GTE:
+                generator.addBRGEQ($a1.temp, $a2.temp, thenLabel);
+                break;
+
+                default:
+                break;
+
+            }       
         } -> ^(compareop expr expr);
 
 //TODO
 addsubexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         : (tiger_const addsubop) => tiger_const addsubop expr {
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
-            $isBool = $tiger_const.isBool || $addsubop.isBool || $expr.isBool;
+            $isBool = false;
             // IR Generation
             $temp = generator.generateTemp();
             switch($addsubop.op) {
@@ -1172,7 +1271,7 @@ addsubexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         } -> ^(addsubop tiger_const expr)
         | (value addsubop) => value addsubop expr {
             $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
-            $isBool = $value.isBool || $addsubop.isBool || $expr.isBool;
+            $isBool = false;
             // IR Generation
             $temp = generator.generateTemp();
             switch ($addsubop.op) {
@@ -1190,7 +1289,7 @@ addsubexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         } -> ^(addsubop value expr)
         | (LPAREN expr RPAREN addsubop) => LPAREN a1=expr RPAREN addsubop a2=expr {
             $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
-            $isBool = $a1.isBool || $addsubop.isBool || $a2.isBool;
+            $isBool = false;
             // IR Generation
             $temp = generator.generateTemp();
             switch ($addsubop.op) {
@@ -1211,7 +1310,7 @@ addsubexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
 multdivexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         : (tiger_const multdivop) => tiger_const multdivop expr {
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $multdivop.text, $multdivop.start.getLine());
-            $isBool = $tiger_const.isBool || $multdivop.isBool || $expr.isBool;
+            $isBool = false;
             // IR Generation
             $temp = generator.generateTemp();
             switch($multdivop.op) {
@@ -1229,13 +1328,13 @@ multdivexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         } -> ^(multdivop tiger_const expr)
         | tiger_const {
             $typeChecker = $tiger_const.typeChecker;
-            $isBool = $tiger_const.isBool;
+            $isBool = false;
             // IR Generation
             $temp = $tiger_const.text;
         }
         | (value multdivop) => value multdivop expr {
             $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $multdivop.text, $multdivop.start.getLine());
-            $isBool = $value.isBool || $multdivop.isBool || $expr.isBool;
+            $isBool = false;
             // IR Generation
             $temp = generator.generateTemp();
             switch ($multdivop.op) {
@@ -1253,13 +1352,13 @@ multdivexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         } -> ^(multdivop value expr)
         | value {
             $typeChecker = $value.typeChecker;
-            $isBool = $value.isBool;
+            $isBool = false;
             // IR Generation
             $temp = $value.temp;
         }
         | (LPAREN expr RPAREN multdivop) => LPAREN a1=expr RPAREN multdivop a2=expr {
             $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $multdivop.text, $multdivop.start.getLine());
-            $isBool = $a1.isBool || $multdivop.isBool || $a2.isBool;
+            $isBool = false;
             // IR Generation
             $temp = generator.generateTemp();
             switch($multdivop.op) {

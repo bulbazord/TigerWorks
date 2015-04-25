@@ -125,7 +125,6 @@ public class IRGenerator {
          try {
              FileWriter writer = new FileWriter(fileName);
              for (String s: list) {
-                 System.out.println(s);
                  writer.write(s + "\n");
              }
              writer.close();

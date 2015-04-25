@@ -56,6 +56,7 @@ tokens {
 @parser::header {
     import java.util.ArrayList;
     import java.util.List;
+    import java.util.Stack;
 }
 
 @parser::members {
@@ -68,6 +69,14 @@ tokens {
     private static final String DEFAULT_FILENAME = "ir.tigir";
     private IRGenerator generator = new IRGenerator();
     private String thenLabel;
+    private String elseLabel;
+    private String endLabel;
+    private String curryLabel;
+    private Stack<String> labelStack = new Stack<String>();
+    private List<String> orLabelList = new ArrayList<String>();
+
+    private boolean funcAssign;
+    private String tempValue;
 
     public SemanticObject evaluateType(SemanticObject a1, SemanticObject a2, String binaryOp, int lineNumber) {
         if (a1 == null && a2 == null) {
@@ -881,7 +890,10 @@ idlist          : ID (COMMA ID)*
 //TODO
 assignrule      : (value ASSIGN funccall) 
 
-                => value ASSIGN funccall SEMI {
+                => value ASSIGN {
+                    funcAssign = true;
+                    tempValue = $value.temp;
+                } funccall SEMI {
                     SymbolTableEntry variable = symbolTable.get(current_scope, $value.text, false);
                     if (variable == null || variable instanceof TypeTableEntry) {
                         errorExists = true;
@@ -934,7 +946,7 @@ assignrule      : (value ASSIGN funccall)
 
 //TODO
 funccall returns [String name]
-                : ID LPAREN argumentlist[new ArrayList<SemanticObject>()] RPAREN {
+                : ID LPAREN argumentlist[new ArrayList<SemanticObject>(), new ArrayList<String>()] RPAREN {
                     SymbolTableEntry function = symbolTable.get(global_scope, $ID.text, true);
                     if (function == null) {
                         errorExists = true;
@@ -960,22 +972,31 @@ funccall returns [String name]
                         }
                     }
                     $name = $ID.text;
+                    // IR Generation
+                    if (funcAssign) {
+                        generator.addCallr(tempValue, $name, $argumentlist.paramList.toArray(new String[$argumentlist.paramList.size()]));
+                    } else {
+                        generator.addCall($name, $argumentlist.paramList.toArray(new String[$argumentlist.paramList.size()]));
+                    }
                 }
                 -> ^(FUNCCALL ID argumentlist);
 
 //TODO
-argumentlist[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
-                : (a1=argument[args] {
+argumentlist[List<SemanticObject> args, List<String> params] returns [List<SemanticObject> argTypes, List<String> paramList]
+                : (a1=argument[args, params] {
                     $argTypes = $args;
-                } (COMMA argument[args])*)?
+                    $paramList = $params;
+                } (COMMA argument[args, params])*)?
                 -> ^(ARGUMENTLIST (argument+)?);
 
 //TODO
-argument[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
+argument[List<SemanticObject> args, List<String> params] returns [List<SemanticObject> argTypes, List<String> paramList]
                 : expr {
                     if (!$expr.isBool) {
                         args.add($expr.typeChecker);
+                        params.add($expr.temp);
                         $argTypes = args;
+                        $paramList = params;
                     }
                 };
 
@@ -986,36 +1007,40 @@ statseq         : (stat)+
 ifthen          : (IF expr THEN statseq ELSE) 
                 => IF {
                     thenLabel = generator.generateLabel();
+                    elseLabel = generator.generateLabel();
+                    endLabel = generator.generateLabel();
                 } expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
                         System.out.print("Line " + $IF.getLine() + ": ");
                         System.out.println("Conditional is not a boolean.");
                     }
-                    String temp = thenLabel;
-                    thenLabel = generator.generateLabel();
-                    generator.addGoto(thenLabel);
-                    generator.addLabel(temp);
-                } THEN statseq ELSE {
-                    String end = generator.generateLabel();
-                    generator.addGoto(end);
+                    generator.addGoto(elseLabel);
+                    for (String label : orLabelList) {
+                        generator.addLabel(label);
+                    }
+                    orLabelList = new ArrayList<String>();
                     generator.addLabel(thenLabel);
-                } statseq ENDIF SEMI
+                } THEN statseq ELSE {
+                    generator.addGoto(endLabel);
+                    generator.addLabel(elseLabel);
+                } statseq {
+                    generator.addLabel(endLabel);
+                } ENDIF SEMI
                 -> ^(IF expr statseq ^(ELSE statseq)?)
                 | IF {
                     thenLabel = generator.generateLabel();
+                    endLabel = generator.generateLabel();
                 } expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
                         System.out.print("Line " + $IF.getLine() + ": ");
                         System.out.println("Conditional is not a boolean.");
                     }
-                    String end = generator.generateLabel();
-                    generator.addGoto(end);
+                    generator.addGoto(endLabel);
                     generator.addLabel(thenLabel);
-                    thenLabel = end;
                 } THEN statseq ENDIF SEMI {
-                    generator.addLabel(thenLabel);
+                    generator.addLabel(endLabel);
                 }
                 -> ^(IF expr statseq);
 
@@ -1044,7 +1069,7 @@ returnstatrule  : RETURN^ expr {
                 } SEMI!;
 breakstatrule   : BREAK^ SEMI!;
 stat            : (value ASSIGN) => assignrule 
-                | funccall SEMI!
+                | {funcAssign = false;} funccall SEMI!
                 | ifthen 
                 | whileloop 
                 | forloop 
@@ -1089,58 +1114,24 @@ expr returns [SemanticObject typeChecker, boolean isBool, String temp]
 
 //TODO
 logicexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
-        : (tiger_const logicop) => tiger_const logicop expr {
-            $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $logicop.text, $logicexpr.start.getLine());
-            $isBool = true;
-            // IR Generation
-            $temp = generator.generateTemp();
-            switch($logicop.op) {
-                case AND:
-                generator.addAnd($tiger_const.text, $expr.temp, $temp);
-                break;
-
-                case OR:
-                generator.addOr($tiger_const.text, $expr.temp, $temp);
-                break;
-
-                default:
-                break;
+        : (LPAREN expr RPAREN logicop) => LPAREN {
+            labelStack.push(thenLabel);
+            thenLabel = generator.generateLabel();
+        } a1=expr RPAREN logicop {
+            if ($logicop.op == Operator.AND) {
+                generator.addGoto(elseLabel);
+                generator.addLabel(thenLabel);
+                thenLabel = labelStack.pop();
+            } else {
+                orLabelList.add(thenLabel);
+                thenLabel = labelStack.pop();
             }
-        } -> ^(logicop tiger_const expr)
-        | (value logicop) => value logicop expr {
-            $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $logicop.text, $logicexpr.start.getLine());
-            $isBool = true;
-            // IR Generation
-            $temp = generator.generateTemp();
-            switch($logicop.op) {
-                case AND:
-                generator.addAnd($value.temp, $expr.temp, $temp);
-                break;
-
-                case OR:
-                generator.addOr($value.temp, $expr.temp, $temp);
-                break;
-
-                default:
-                break;
-            }
-        } -> ^(logicop value expr)
-        | (LPAREN expr RPAREN logicop) => LPAREN a1=expr RPAREN logicop a2=expr {
+        } a2=expr {
             $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $logicop.text, $logicexpr.start.getLine());
             $isBool = true;
-            // IR Generation
-            $temp = generator.generateTemp();
-            switch($logicop.op) {
-                case AND:
-                generator.addAnd($a1.temp, $a2.temp, $temp);
-                break;
-
-                case OR:
-                generator.addOr($a1.temp, $a2.temp, $temp);
-                break;
-
-                default:
-                break;
+            if ($logicop.op == Operator.AND) {
+            } else {
+                //JUMPME
             }
         } -> ^(logicop expr expr);
 

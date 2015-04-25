@@ -19,7 +19,7 @@ int function absolute_value(n : int)
 begin
     begin
         var result : int;
-        if (n > 0) then
+        if (n > 0) | (n > 0) & (n > 0) then
             return n;
         else
             result := negative(1);

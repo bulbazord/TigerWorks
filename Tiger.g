@@ -459,7 +459,9 @@ tigerprogram returns [SymbolTable symbolTable, boolean errorExists]
     : typedecllist functdecllist mainfunction EOF {
         $symbolTable = symbolTable;
         $errorExists = errorExists;
-        generator.writeToFile(DEFAULT_FILENAME);
+        if (!errorExists) {
+            generator.writeToFile(DEFAULT_FILENAME);
+        }
     }
     -> ^(PROG typedecllist functdecllist mainfunction);
 
@@ -772,27 +774,29 @@ vardecl         : (VAR idlist COLON typeid ASSIGN)
                         }
                     }
                     // IR Generation
-                    if (((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT
-                        || ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT)
-                    {
-                        String idListRaw = $idlist.text.replaceAll("\\s", "");;
-                        String[] idList = idListRaw.split(",");
-                        for (String var : idList) {
-                            generator.addAssignment(var, $tiger_const.text);
-                        }
-                    } else {
-                        String idListRaw = $idlist.text.replaceAll("\\s", "");;
-                        String[] idList = idListRaw.split(",");
-                        int arraySize = 0;
-                        if (((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR
-                            || ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT_ARR) {
-                            arraySize = ((TypeTableEntry)type).getLength();
+                    if (!errorExists) {
+                        if (((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT
+                                || ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT)
+                        {
+                            String idListRaw = $idlist.text.replaceAll("\\s", "");;
+                            String[] idList = idListRaw.split(",");
+                            for (String var : idList) {
+                                generator.addAssignment(var, $tiger_const.text);
+                            }
                         } else {
-                            arraySize = ((TypeTableEntry)type).getLength() 
+                            String idListRaw = $idlist.text.replaceAll("\\s", "");;
+                            String[] idList = idListRaw.split(",");
+                            int arraySize = 0;
+                            if (((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR
+                                || ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT_ARR) {
+                                arraySize = ((TypeTableEntry)type).getLength();
+                            } else {
+                                arraySize = ((TypeTableEntry)type).getLength() 
                                             * ((TypeTableEntry)type).getHeight();
-                        }
-                        for (String var : idList) {
-                            generator.addAssignment(var, arraySize, $tiger_const.text);
+                            }
+                            for (String var : idList) {
+                                generator.addAssignment(var, arraySize, $tiger_const.text);
+                            }
                         }
                     }
                 } -> ^(VARDECL idlist typeid ASSIGN tiger_const)
@@ -966,11 +970,12 @@ assignrule      : (value ASSIGN funccall)
                         }
                     }
                     //IR Generation
-                    //JUMP
-                    if ($value.arr) {
-                        generator.addArrayStore($value.name, $value.index, $expr.temp);
-                    } else {
-                        generator.addAssignment($value.temp, $expr.temp);
+                    if (!errorExists) {
+                        if ($value.arr) {
+                            generator.addArrayStore($value.name, $value.index, $expr.temp);
+                        } else {
+                            generator.addAssignment($value.temp, $expr.temp);
+                        }
                     }
                 }
                 -> ^(ASSIGN value expr);
@@ -1004,10 +1009,12 @@ funccall returns [String name]
                     }
                     $name = $ID.text;
                     // IR Generation
-                    if (funcAssign) {
-                        generator.addCallr(tempValue, $name, $argumentlist.paramList.toArray(new String[$argumentlist.paramList.size()]));
-                    } else {
-                        generator.addCall($name, $argumentlist.paramList.toArray(new String[$argumentlist.paramList.size()]));
+                    if (!errorExists) {
+                        if (funcAssign) {
+                            generator.addCallr(tempValue, $name, $argumentlist.paramList.toArray(new String[$argumentlist.paramList.size()]));
+                        } else {
+                            generator.addCall($name, $argumentlist.paramList.toArray(new String[$argumentlist.paramList.size()]));
+                        }
                     }
                 }
                 -> ^(FUNCCALL ID argumentlist);
@@ -1037,93 +1044,119 @@ statseq         : (stat)+
 //TODO
 ifthen          : (IF expr THEN statseq ELSE) 
                 => IF {
-                    labelStack.push(thenLabel);
-                    labelStack.push(endLabel);
-                    thenLabel = generator.generateLabel();
-                    elseLabel = generator.generateLabel();
-                    endLabel = generator.generateLabel();
+                    if (!errorExists) {
+                        labelStack.push(thenLabel);
+                        labelStack.push(endLabel);
+                        thenLabel = generator.generateLabel();
+                        elseLabel = generator.generateLabel();
+                        endLabel = generator.generateLabel();
+                    }
                 } expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
                         System.out.print("Line " + $IF.getLine() + ": ");
                         System.out.println("Conditional is not a boolean.");
                     }
-                    generator.addGoto(elseLabel);
-                    for (String label : orLabelList) {
-                        generator.addLabel(label);
+                    if (!errorExists) {
+                        generator.addGoto(elseLabel);
+                        for (String label : orLabelList) {
+                            generator.addLabel(label);
+                        }
+                        orLabelList = new ArrayList<String>();
+                        generator.addLabel(thenLabel);
                     }
-                    orLabelList = new ArrayList<String>();
-                    generator.addLabel(thenLabel);
                 } THEN statseq ELSE {
-                    generator.addGoto(endLabel);
-                    generator.addLabel(elseLabel);
+                    if (!errorExists) {
+                        generator.addGoto(endLabel);
+                        generator.addLabel(elseLabel);
+                    }
                 } statseq {
-                    generator.addLabel(endLabel);
-                    endLabel = labelStack.pop();
-                    thenLabel = labelStack.pop();
+                    if (!errorExists) {
+                        generator.addLabel(endLabel);
+                        endLabel = labelStack.pop();
+                        thenLabel = labelStack.pop();
+                    }
                 } ENDIF SEMI
                 -> ^(IF expr statseq ^(ELSE statseq)?)
                 | IF {
-                    labelStack.push(thenLabel);
-                    labelStack.push(endLabel);
-                    thenLabel = generator.generateLabel();
-                    endLabel = generator.generateLabel();
+                    if (!errorExists) {
+                        labelStack.push(thenLabel);
+                        labelStack.push(endLabel);
+                        thenLabel = generator.generateLabel();
+                        endLabel = generator.generateLabel();
+                    }
                 } expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
                         System.out.print("Line " + $IF.getLine() + ": ");
                         System.out.println("Conditional is not a boolean.");
                     }
-                    generator.addGoto(endLabel);
-                    generator.addLabel(thenLabel);
+                    if (!errorExists) {
+                        generator.addGoto(endLabel);
+                        generator.addLabel(thenLabel);
+                    }
                 } THEN statseq ENDIF SEMI {
-                    generator.addLabel(endLabel);
-                    endLabel = labelStack.pop();
-                    thenLabel = labelStack.pop();
+                    if (!errorExists) {
+                        generator.addLabel(endLabel);
+                        endLabel = labelStack.pop();
+                        thenLabel = labelStack.pop();
+                    }
                 }
                 -> ^(IF expr statseq);
 
 //TODO
 whileloop       : WHILE  {
-                    labelStack.push(thenLabel);
-                    labelStack.push(doneLabel);
-                    labelStack.push(startLabel);
-                    thenLabel = generator.generateLabel();
-                    doneLabel = generator.generateLabel();
-                    startLabel = generator.generateLabel();
-                    generator.addLabel(startLabel);
+                    if (!errorExists) {
+                        labelStack.push(thenLabel);
+                        labelStack.push(doneLabel);
+                        labelStack.push(startLabel);
+                        thenLabel = generator.generateLabel();
+                        doneLabel = generator.generateLabel();
+                        startLabel = generator.generateLabel();
+                        generator.addLabel(startLabel);
+                    }
                 } expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
                         System.out.print("Line " + $WHILE.getLine() + ": ");
                         System.out.println("Conditional is not a boolean.");
                     }
-                    generator.addGoto(doneLabel);
-                    generator.addLabel(thenLabel);
+                    if (!errorExists) {
+                        generator.addGoto(doneLabel);
+                        generator.addLabel(thenLabel);
+                    }
                 } DO statseq {
-                    generator.addGoto(startLabel);
-                    generator.addLabel(doneLabel);
-                    startLabel = labelStack.pop();
-                    doneLabel = labelStack.pop();
-                    thenLabel = labelStack.pop();
+                    if (!errorExists) {
+                        generator.addGoto(startLabel);
+                        generator.addLabel(doneLabel);
+                        startLabel = labelStack.pop();
+                        doneLabel = labelStack.pop();
+                        thenLabel = labelStack.pop();
+                    }
                 } ENDDO SEMI
                 -> ^(WHILE expr statseq);
 //TODO
 forloop         : FOR ID ASSIGN a1=indexexpr {
-                    // JUMPME
-                    generator.addAssignment($ID.text, $a1.temp);
-                    labelStack.push(thenLabel);
-                    labelStack.push(doneLabel);
-                    thenLabel = generator.generateLabel();
-                    doneLabel = generator.generateLabel();
+                    if (!errorExists) {
+                        generator.addAssignment($ID.text, $a1.temp);
+                        labelStack.push(thenLabel);
+                        labelStack.push(doneLabel);
+                        thenLabel = generator.generateLabel();
+                        doneLabel = generator.generateLabel();
+                    }
                 } TO a2=indexexpr {
-                    generator.addLabel(thenLabel);
-                    generator.addBREQ($ID.text, $a2.temp, doneLabel);
+                    if (!errorExists) {
+                        generator.addLabel(thenLabel);
+                        generator.addBREQ($ID.text, $a2.temp, doneLabel);
+                    }
                 } DO statseq ENDDO SEMI {
-                    generator.addGoto(thenLabel);
-                    generator.addLabel(doneLabel);
-                    doneLabel = labelStack.pop();
-                    thenLabel = labelStack.pop();
+                    if (!errorExists) {
+                        generator.addAddition($ID.text, ""+1, $ID.text);
+                        generator.addGoto(thenLabel);
+                        generator.addLabel(doneLabel);
+                        doneLabel = labelStack.pop();
+                        thenLabel = labelStack.pop();
+                    }
                 }
                 -> ^(FOR ID ASSIGN indexexpr indexexpr statseq);
 //TODO
@@ -1135,10 +1168,14 @@ returnstatrule  : RETURN^ expr {
                         System.out.println("Returned type and function return type are incompatible.");
                     }
                     // IR Generation
-                    generator.addReturn($expr.temp);
+                    if (!errorExists) {
+                        generator.addReturn($expr.temp);
+                    }
                 } SEMI!;
 breakstatrule   : BREAK^ {
-                    generator.addGoto(doneLabel);
+                    if (!errorExists) {
+                        generator.addGoto(doneLabel);
+                    }
                 } SEMI!;
 stat            : (value ASSIGN) => assignrule 
                 | {funcAssign = false;} funccall SEMI!
@@ -1161,46 +1198,62 @@ expr returns [SemanticObject typeChecker, boolean isBool, String temp]
         : (logicexpr) => logicexpr {
             $typeChecker = $logicexpr.typeChecker;
             $isBool = $logicexpr.isBool;
-            $temp = $logicexpr.temp;
+            if (!errorExists) {
+                $temp = $logicexpr.temp;
+            }
         }
         | (compareexpr) => compareexpr {
             $typeChecker = $compareexpr.typeChecker;
             $isBool = $compareexpr.isBool;
-            $temp = $compareexpr.temp;
+            if (!errorExists) {
+                $temp = $compareexpr.temp;
+            }
         }
         | (addsubexpr) => addsubexpr {
             $typeChecker = $addsubexpr.typeChecker;
             $isBool = $addsubexpr.isBool;
-            $temp = $addsubexpr.temp;
+            if (!errorExists) {
+                $temp = $addsubexpr.temp;
+            }
         }
         | (multdivexpr) => multdivexpr {
             $typeChecker = $multdivexpr.typeChecker;
             $isBool = $multdivexpr.isBool;
-            $temp = $multdivexpr.temp;
+            if (!errorExists) {
+                $temp = $multdivexpr.temp;
+            }
         }
         | LPAREN! a1=expr RPAREN! {
             $typeChecker = $a1.typeChecker;
             $isBool = $a1.isBool;
-            $temp = $a1.temp;
+            if (!errorExists) {
+                $temp = $a1.temp;
+            }
         };
 
 //TODO
 logicexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         : (LPAREN expr RPAREN logicop) => LPAREN {
-            labelStack.push(thenLabel);
-            thenLabel = generator.generateLabel();
+            if (!errorExists) {
+                labelStack.push(thenLabel);
+                thenLabel = generator.generateLabel();
+            }
         } a1=expr RPAREN logicop {
-            if ($logicop.op == Operator.AND) {
-                generator.addGoto(elseLabel);
-                generator.addLabel(thenLabel);
-                thenLabel = labelStack.pop();
-            } else {
-                orLabelList.add(thenLabel);
-                thenLabel = labelStack.pop();
+            if (!errorExists) {
+                if ($logicop.op == Operator.AND) {
+                    generator.addGoto(elseLabel);
+                    generator.addLabel(thenLabel);
+                    thenLabel = labelStack.pop();
+                } else {
+                    orLabelList.add(thenLabel);
+                    thenLabel = labelStack.pop();
+                }
             }
         } a2=expr {
-            $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $logicop.text, $logicexpr.start.getLine());
-            $isBool = true;
+            if (!errorExists) {
+                $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $logicop.text, $logicexpr.start.getLine());
+                $isBool = true;
+            }
         } -> ^(logicop expr expr);
 
 //TODO
@@ -1209,103 +1262,109 @@ compareexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $compareop.text, $compareexpr.start.getLine());
             $isBool = true;
             // IR Generation
-            switch ($compareop.op) {
-                case EQ:
-                generator.addBREQ($tiger_const.text, $expr.temp, thenLabel);
-                break;
+            if (!errorExists) {
+                switch ($compareop.op) {
+                    case EQ:
+                    generator.addBREQ($tiger_const.text, $expr.temp, thenLabel);
+                    break;
 
-                case NEQ:
-                generator.addBRNEQ($tiger_const.text, $expr.temp, thenLabel);
-                break;
+                    case NEQ:
+                    generator.addBRNEQ($tiger_const.text, $expr.temp, thenLabel);
+                    break;
 
-                case LT:
-                generator.addBRLT($tiger_const.text, $expr.temp, thenLabel);
-                break;
+                    case LT:
+                    generator.addBRLT($tiger_const.text, $expr.temp, thenLabel);
+                    break;
 
-                case LTE:
-                generator.addBRLEQ($tiger_const.text, $expr.temp, thenLabel);
-                break;
+                    case LTE:
+                    generator.addBRLEQ($tiger_const.text, $expr.temp, thenLabel);
+                    break;
 
-                case GT:
-                generator.addBRGT($tiger_const.text, $expr.temp, thenLabel);
-                break;
+                    case GT:
+                    generator.addBRGT($tiger_const.text, $expr.temp, thenLabel);
+                    break;
 
-                case GTE:
-                generator.addBRGEQ($tiger_const.text, $expr.temp, thenLabel);
-                break;
+                    case GTE:
+                    generator.addBRGEQ($tiger_const.text, $expr.temp, thenLabel);
+                    break;
 
-                default:
-                break;
+                    default:
+                    break;
 
+                }
             }
         } -> ^(compareop tiger_const expr)
         | (value compareop) => value compareop expr {
             $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $compareop.text, $compareexpr.start.getLine());
             $isBool = true;
             // IR Generation 
-            switch ($compareop.op) {
-                case EQ:
-                generator.addBREQ($value.temp, $expr.temp, thenLabel);
-                break;
+            if (!errorExists) {
+                switch ($compareop.op) {
+                    case EQ:
+                    generator.addBREQ($value.temp, $expr.temp, thenLabel);
+                    break;
 
-                case NEQ:
-                generator.addBRNEQ($value.temp, $expr.temp, thenLabel);
-                break;
+                    case NEQ:
+                    generator.addBRNEQ($value.temp, $expr.temp, thenLabel);
+                    break;
 
-                case LT:
-                generator.addBRLT($value.temp, $expr.temp, thenLabel);
-                break;
+                    case LT:
+                    generator.addBRLT($value.temp, $expr.temp, thenLabel);
+                    break;
 
-                case LTE:
-                generator.addBRLEQ($value.temp, $expr.temp, thenLabel);
-                break;
+                    case LTE:
+                    generator.addBRLEQ($value.temp, $expr.temp, thenLabel);
+                    break;
 
-                case GT:
-                generator.addBRGT($value.temp, $expr.temp, thenLabel);
-                break;
+                    case GT:
+                    generator.addBRGT($value.temp, $expr.temp, thenLabel);
+                    break;
 
-                case GTE:
-                generator.addBRGEQ($value.temp, $expr.temp, thenLabel);
-                break;
+                    case GTE:
+                    generator.addBRGEQ($value.temp, $expr.temp, thenLabel);
+                    break;
 
-                default:
-                break;
+                    default:
+                    break;
 
-            }       
+                }       
+            }
         } -> ^(compareop value expr)
         | (LPAREN expr RPAREN logicop) => LPAREN a1=expr RPAREN compareop a2=expr {
             $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $compareop.text, $compareexpr.start.getLine());
             $isBool = true;
             // IR Generation
-            switch ($compareop.op) {
-                case EQ:
-                generator.addBREQ($a1.temp, $a2.temp, thenLabel);
-                break;
+            if (!errorExists) {
+                switch ($compareop.op) {
+                    case EQ:
+                    generator.addBREQ($a1.temp, $a2.temp, thenLabel);
+                    break;
 
-                case NEQ:
-                generator.addBRNEQ($a1.temp, $a2.temp, thenLabel);
-                break;
+                    case NEQ:
+                    generator.addBRNEQ($a1.temp, $a2.temp, thenLabel);
+                    break;
 
-                case LT:
-                generator.addBRLT($a1.temp, $a2.temp, thenLabel);
-                break;
+                    case LT:
+                    generator.addBRLT($a1.temp, $a2.temp, thenLabel);
+                    break;
 
-                case LTE:
-                generator.addBRLEQ($a1.temp, $a2.temp, thenLabel);
-                break;
+                    case LTE:
+                    generator.addBRLEQ($a1.temp, $a2.temp, thenLabel);
+                    break;
 
-                case GT:
-                generator.addBRGT($a1.temp, $a2.temp, thenLabel);
-                break;
+                    case GT:
+                    generator.addBRGT($a1.temp, $a2.temp, thenLabel);
+                    break;
 
-                case GTE:
-                generator.addBRGEQ($a1.temp, $a2.temp, thenLabel);
-                break;
+                    case GTE:
+                    generator.addBRGEQ($a1.temp, $a2.temp, thenLabel);
+                    break;
 
-                default:
-                break;
+                    default:
+                    break;
 
-            }       
+                }       
+            }
         } -> ^(compareop expr expr);
 
 //TODO
@@ -1314,54 +1373,60 @@ addsubexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
             $isBool = false;
             // IR Generation
-            $temp = generator.generateTemp();
-            switch($addsubop.op) {
-                case PLUS:
-                generator.addAddition($tiger_const.text, $expr.temp, $temp);
-                break;
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch($addsubop.op) {
+                    case PLUS:
+                    generator.addAddition($tiger_const.text, $expr.temp, $temp);
+                    break;
 
-                case MINUS:
-                generator.addSubtraction($tiger_const.text, $expr.temp, $temp);
-                break;
+                    case MINUS:
+                    generator.addSubtraction($tiger_const.text, $expr.temp, $temp);
+                    break;
 
-                default:
-                break;
+                    default:
+                    break;
+                }
             }
         } -> ^(addsubop tiger_const expr)
         | (value addsubop) => value addsubop expr {
             $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
             $isBool = false;
             // IR Generation
-            $temp = generator.generateTemp();
-            switch ($addsubop.op) {
-                case PLUS:
-                generator.addAddition($value.temp, $expr.temp, $temp);
-                break;
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch ($addsubop.op) {
+                    case PLUS:
+                    generator.addAddition($value.temp, $expr.temp, $temp);
+                    break;
 
-                case MINUS:
-                generator.addSubtraction($value.temp, $expr.temp, $temp);
-                break;
+                    case MINUS:
+                    generator.addSubtraction($value.temp, $expr.temp, $temp);
+                    break;
 
-                default:
-                break;
+                    default:
+                    break;
+                }
             }
         } -> ^(addsubop value expr)
         | (LPAREN expr RPAREN addsubop) => LPAREN a1=expr RPAREN addsubop a2=expr {
             $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
             $isBool = false;
             // IR Generation
-            $temp = generator.generateTemp();
-            switch ($addsubop.op) {
-                case PLUS:
-                generator.addAddition($a1.temp, $a2.temp, $temp);
-                break;
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch ($addsubop.op) {
+                    case PLUS:
+                    generator.addAddition($a1.temp, $a2.temp, $temp);
+                    break;
 
-                case MINUS:
-                generator.addSubtraction($a1.temp, $a2.temp, $temp);
-                break;
+                    case MINUS:
+                    generator.addSubtraction($a1.temp, $a2.temp, $temp);
+                    break;
 
-                default:
-                break;
+                    default:
+                    break;
+                }
             }
         } -> ^(addsubop expr expr);
 
@@ -1371,66 +1436,76 @@ multdivexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $multdivop.text, $multdivop.start.getLine());
             $isBool = false;
             // IR Generation
-            $temp = generator.generateTemp();
-            switch($multdivop.op) {
-                case MULT:
-                generator.addMultiplication($tiger_const.text, $expr.temp, $temp);
-                break;
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch($multdivop.op) {
+                    case MULT:
+                    generator.addMultiplication($tiger_const.text, $expr.temp, $temp);
+                    break;
 
-                case DIV:
-                generator.addDivision($tiger_const.text, $expr.temp, $temp);
-                break;
+                    case DIV:
+                    generator.addDivision($tiger_const.text, $expr.temp, $temp);
+                    break;
 
-                default:
-                break;
+                    default:
+                    break;
+                }
             }
         } -> ^(multdivop tiger_const expr)
         | tiger_const {
             $typeChecker = $tiger_const.typeChecker;
             $isBool = false;
             // IR Generation
-            $temp = $tiger_const.text;
+            if (!errorExists) {
+                $temp = $tiger_const.text;
+            }
         }
         | (value multdivop) => value multdivop expr {
             $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $multdivop.text, $multdivop.start.getLine());
             $isBool = false;
             // IR Generation
-            $temp = generator.generateTemp();
-            switch ($multdivop.op) {
-                case MULT:
-                generator.addMultiplication($value.temp, $expr.temp, $temp);
-                break;
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch ($multdivop.op) {
+                    case MULT:
+                    generator.addMultiplication($value.temp, $expr.temp, $temp);
+                    break;
 
-                case DIV:
-                generator.addDivision($value.temp, $expr.temp, $temp);
-                break;
-                
-                default:
-                break;
+                    case DIV:
+                    generator.addDivision($value.temp, $expr.temp, $temp);
+                    break;
+                    
+                    default:
+                    break;
+                }
             }
         } -> ^(multdivop value expr)
         | value {
             $typeChecker = $value.typeChecker;
             $isBool = false;
             // IR Generation
-            $temp = $value.temp;
+            if (!errorExists) {
+                $temp = $value.temp;
+            }
         }
         | (LPAREN expr RPAREN multdivop) => LPAREN a1=expr RPAREN multdivop a2=expr {
             $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $multdivop.text, $multdivop.start.getLine());
             $isBool = false;
             // IR Generation
-            $temp = generator.generateTemp();
-            switch($multdivop.op) {
-                case MULT:
-                generator.addMultiplication($a1.temp, $a2.temp, $temp);
-                break;
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch($multdivop.op) {
+                    case MULT:
+                    generator.addMultiplication($a1.temp, $a2.temp, $temp);
+                    break;
 
-                case DIV:
-                generator.addDivision($a1.temp, $a2.temp, $temp);
-                break;
+                    case DIV:
+                    generator.addDivision($a1.temp, $a2.temp, $temp);
+                    break;
 
-                default:
-                break;
+                    default:
+                    break;
+                }
             }
         } -> ^(multdivop expr expr);
 
@@ -1470,15 +1545,17 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                     $isBool = false;
                     $name = $ID.text;
                     //IR Generation
-                    $temp = generator.generateTemp();
-                    $arr = true;
-                    String temp1 = generator.generateTemp();
-                    String temp2 = generator.generateTemp();
-                    generator.addMultiplication($a1.temp, "" + ((VarTableEntry)variable).getType().getLength(), temp1);
-                    generator.addAddition(temp1, $a2.temp, temp2);
-                    $index = temp2;
-                    if (arrAssign) {
-                        generator.addArrayLoad($temp, $ID.text, temp2);
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        $arr = true;
+                        String temp1 = generator.generateTemp();
+                        String temp2 = generator.generateTemp();
+                        generator.addMultiplication($a1.temp, "" + ((VarTableEntry)variable).getType().getLength(), temp1);
+                        generator.addAddition(temp1, $a2.temp, temp2);
+                        $index = temp2;
+                        if (arrAssign) {
+                            generator.addArrayLoad($temp, $ID.text, temp2);
+                        }
                     }
                 } -> ^(VALUE ID indexexpr indexexpr)
                 | (ID LBRACK)
@@ -1502,11 +1579,13 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                     $isBool = false;
                     $name = $ID.text;
                     //IR Generator
-                    $temp = generator.generateTemp();
-                    $arr = true;
-                    $index = $indexexpr.temp;
-                    if (arrAssign) {
-                        generator.addArrayLoad($temp, $ID.text, $index);
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        $arr = true;
+                        $index = $indexexpr.temp;
+                        if (arrAssign) {
+                            generator.addArrayLoad($temp, $ID.text, $index);
+                        }
                     }
                 } -> ^(VALUE ID indexexpr)
                 | ID {
@@ -1523,7 +1602,9 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                     $isBool = false;
                     $name = $ID.text;
                     // IR Generator
-                    $temp = $ID.text;
+                    if (!errorExists) {
+                        $temp = $ID.text;
+                    }
                 } -> ^(VALUE ID);
 
 // Expression list
@@ -1532,113 +1613,136 @@ exprlist        : (expr (COMMA! expr)*)?;
 // Index expression
 indexexpr returns [String temp]
                 : (indexaddexpr) => indexaddexpr {
-                    $temp = $indexaddexpr.temp;
+                    if (!errorExists) {
+                        $temp = $indexaddexpr.temp;
+                    }
                 }
                 | (indexmultexpr) => indexmultexpr {
-                    $temp = $indexmultexpr.temp;
+                    if (!errorExists) {
+                        $temp = $indexmultexpr.temp;
+                    }
                 }
                 | LPAREN! a1=indexexpr RPAREN! {
-                    $temp = $a1.temp;
+                    if (!errorExists) {
+                        $temp = $a1.temp;
+                    }
                 };
 
 indexaddexpr returns [String temp]
                 : (tiger_const addsubop) => tiger_const addsubop indexexpr {
-                    $temp = generator.generateTemp();
-                    switch($addsubop.op) {
-                        case PLUS:
-                        generator.addAddition($tiger_const.text, $indexexpr.temp, $temp);
-                        break;
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($addsubop.op) {
+                            case PLUS:
+                            generator.addAddition($tiger_const.text, $indexexpr.temp, $temp);
+                            break;
 
-                        case MINUS:
-                        generator.addSubtraction($tiger_const.text, $indexexpr.temp, $temp);
-                        break;
+                            case MINUS:
+                            generator.addSubtraction($tiger_const.text, $indexexpr.temp, $temp);
+                            break;
 
-                        default:
-                        break;
+                            default:
+                            break;
+                        }
                     }
                 } -> ^(addsubop tiger_const indexexpr)
                 | (value addsubop) => value addsubop indexexpr {
-                    $temp = generator.generateTemp();
-                    switch($addsubop.op) {
-                        case PLUS:
-                        generator.addAddition($value.temp, $indexexpr.temp, $temp);
-                        break;
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($addsubop.op) {
+                            case PLUS:
+                            generator.addAddition($value.temp, $indexexpr.temp, $temp);
+                            break;
 
-                        case MINUS:
-                        generator.addSubtraction($value.temp, $indexexpr.temp, $temp);
-                        break;
+                            case MINUS:
+                            generator.addSubtraction($value.temp, $indexexpr.temp, $temp);
+                            break;
 
-                        default:
-                        break;
+                            default:
+                            break;
+                        }
                     }
                 } -> ^(addsubop value indexexpr)
                 | (LPAREN indexexpr RPAREN addsubop) => LPAREN a1=indexexpr RPAREN addsubop a2=indexexpr {
-                    $temp = generator.generateTemp();
-                    switch($addsubop.op) {
-                        case PLUS:
-                        generator.addAddition($a1.temp, $a2.temp, $temp);
-                        break;
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($addsubop.op) {
+                            case PLUS:
+                            generator.addAddition($a1.temp, $a2.temp, $temp);
+                            break;
 
-                        case MINUS:
-                        generator.addSubtraction($a1.temp, $a2.temp, $temp);
-                        break;
+                            case MINUS:
+                            generator.addSubtraction($a1.temp, $a2.temp, $temp);
+                            break;
 
-                        default:
-                        break;
+                            default:
+                            break;
+                        }
                     }
                 } -> ^(addsubop indexexpr indexexpr);
                 
 
 indexmultexpr returns [String temp]
                 : (tiger_const multdivop) => tiger_const multdivop indexexpr {
-                    $temp = generator.generateTemp();
-                    switch($multdivop.op) {
-                        case MULT:
-                        generator.addMultiplication($tiger_const.text, $indexexpr.temp, $temp);
-                        break;
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($multdivop.op) {
+                            case MULT:
+                            generator.addMultiplication($tiger_const.text, $indexexpr.temp, $temp);
+                            break;
 
-                        case DIV:
-                        generator.addDivision($tiger_const.text, $indexexpr.temp, $temp);
-                        break;
+                            case DIV:
+                            generator.addDivision($tiger_const.text, $indexexpr.temp, $temp);
+                            break;
 
-                        default:
-                        break;
+                            default:
+                            break;
+                        }
                     }
                 } -> ^(multdivop tiger_const indexexpr)
                 | tiger_const {
-                    $temp = $tiger_const.text;
+                    if (!errorExists) {
+                        $temp = $tiger_const.text;
+                    }
                 }
                 | (value multdivop) => value multdivop indexexpr {
-                    $temp = generator.generateTemp();
-                    switch($multdivop.op) {
-                        case MULT:
-                        generator.addMultiplication($value.temp, $indexexpr.temp, $temp);
-                        break;
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($multdivop.op) {
+                            case MULT:
+                            generator.addMultiplication($value.temp, $indexexpr.temp, $temp);
+                            break;
 
-                        case DIV:
-                        generator.addDivision($value.temp, $indexexpr.temp, $temp);
-                        break;
+                            case DIV:
+                            generator.addDivision($value.temp, $indexexpr.temp, $temp);
+                            break;
 
-                        default:
-                        break;
+                            default:
+                            break;
+                        }
                     }
                 } -> ^(multdivop value indexexpr)
                 | value {
-                    $temp = $value.temp;
+                    if (!errorExists) {
+                        $temp = $value.temp;
+                    }
                 }
                 | (LPAREN indexexpr RPAREN multdivop) => LPAREN a1=indexexpr RPAREN multdivop a2=indexexpr {
-                    $temp = generator.generateTemp();
-                    switch($multdivop.op) {
-                        case MULT:
-                        generator.addMultiplication($a1.temp, $a2.temp, $temp);
-                        break;
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($multdivop.op) {
+                            case MULT:
+                            generator.addMultiplication($a1.temp, $a2.temp, $temp);
+                            break;
 
-                        case DIV:
-                        generator.addDivision($a1.temp, $a2.temp, $temp);
-                        break;
+                            case DIV:
+                            generator.addDivision($a1.temp, $a2.temp, $temp);
+                            break;
 
-                        default:
-                        break;
+                            default:
+                            break;
+
+                        }
                     }
                 } -> ^(multdivop indexexpr indexexpr);
 

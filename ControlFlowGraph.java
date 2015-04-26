@@ -19,7 +19,7 @@ public class ControlFlowGraph {
     Set<String> nonCondBranches;
     Set<String> conditionalBranches;
     ArrayList<BasicBlock> basicBlocks;
-    ArrayList<ExtendedBasicBlock> ebbs; //@TODO make class ExtenededBasicBlock
+    ArrayList<ExtendedBasicBlock> ebbs;
     Set<Edge> edges;
 
 
@@ -80,6 +80,7 @@ public class ControlFlowGraph {
         Map<Integer, String>  nonCondBranches = new HashMap<Integer, String>();
         Set<Integer> conditionalBranches = new HashSet<Integer>();
         Map<String,Integer> labels = new HashMap<>();
+        String target;
 
         // sweep the IR code and handle all branches
         for (int i = 0; i < ir.size(); i++) { // i is the current line in the ir code
@@ -89,7 +90,8 @@ public class ControlFlowGraph {
                 labels.put(inst.getName(), new Integer(i));
             } else if (!inst.isEmpty()) {
                 if(branches().contains(inst.getOp())) {
-                  //@TODO put it in our hashmap 
+                  //@TODO put it in our hashmap
+                  String
                 } else if(condBranches().contains(inst.getOp())) {
                     //@TODO put it in our hashset
                 } else {
@@ -163,6 +165,25 @@ public class ControlFlowGraph {
         cb.add("brgep");
         cb.add("brleq");
 
-        return cb;
+        return cb;  
+    }
+
+    // grabs target address for label
+    public String getTarget(Instruction inst) {
+        if(inst.getOp() == "return") {
+            return null;
+        } else if(inst.getOp() == "call" || inst.getOp() == "callr") {
+            return null;
+        } else if(inst.getOp() == "goto") {
+            return inst.getDstReg();
+        } else {
+            return inst.getSrcTwo();
+        }
+    }
+
+    // consolidate basic blocks into an extended basic block
+    public ExtendedBasicBlock generateEbb(BasicBlock start, Set<BasicBlock> others) {
+        ArrayList<BasicBlock> blocks = basicBlocks.get(edge.dst);
+        return null;
     }
 }

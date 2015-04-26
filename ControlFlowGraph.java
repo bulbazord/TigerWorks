@@ -49,6 +49,27 @@ public class ControlFlowGraph {
         
         }
 
+    private class ExtendedBasicBlock {
+        private Arraylist<BasicBlock> blocks;
+
+        ExtendedBasicBlock() {
+            blocks = new ArrayList<BasicBlock>();
+
+        }
+
+        ExtendedBasicBlock(ArrayList<BasicBlock> bBlocks) {
+            blocks = bBlocks;
+        }
+
+        /*
+        * @return components of this EBB
+        */
+        public ArrayList<BasicBlock> getComponents() {
+            return blocks;
+        }
+        
+    }
+
 
     // set up CFG
     public ControlFlowGraph(ArrayList<Instruction> ir) {

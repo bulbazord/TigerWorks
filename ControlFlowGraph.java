@@ -6,7 +6,14 @@ import java.util.Map;
 import java.util.Iterator;
 import java.util.List;
 
-
+/*
+* This is where the magic happens
+* Here we parse the IR Code and generate a control flow graph with basic blocks
+* Then we consolidate them into extended basic blocks and use those to perform register
+* allocation.
+* *WE CANNOT REGISTER ALLOCATE WITHOUT A COMPLETE CFG!!!!
+*
+*/
 public class ControlFlowGraph {
 
     Set<String> branches;
@@ -63,7 +70,25 @@ public class ControlFlowGraph {
             }
 
         }
-
-        for(int i = 0;)
         
     }
+
+    public Set<String> branches() {
+        branches = new HashSet<>();
+        branches.add("goto");
+        return branches;
+        // would add more for function calls but we aren't implementing
+
+    }
+
+    public Set<string> condBranches() {
+        condBranches = new HashSet<>();
+        condBranches.add("breq");
+        condBranches.add("brneq");
+        condBranches.add("brlt");
+        condBranches.add("brgep");
+        condBranches.add("brleq");
+
+        return condBranches;
+    }
+}

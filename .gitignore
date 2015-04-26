@@ -1,6 +1,8 @@
 TigerLexer.java
 TigerParser.java
 .*.swp
+*.tigir
+*.dot
 
 # Created by https://www.gitignore.io
 

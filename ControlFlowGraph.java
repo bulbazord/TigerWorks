@@ -24,21 +24,21 @@ public class ControlFlowGraph {
 
 
     private class Edge {
-        public int src;
-        public int dst;
+         int src;
+         int dst;
 
         public Edge(int src, int dst) {
             this.src = src;
             this.dst = dst;
             }
 
-
+/*        @ TODO FIX LATER
         public boolean equals(Object other) { // comapres Edges to see if they are the same.
 
             if(other == null || !(other instanceof Edge)) {
                 return false;
 
-            } else if (other.src == src && other.dst == dst) {
+            } else if ( (Edge) other.src == src && (Edge) other.dst == dst) {
                 return true;
                 
             } else {
@@ -46,11 +46,11 @@ public class ControlFlowGraph {
             }
 
             }
-        
+  */      
         }
 
     private class ExtendedBasicBlock {
-        private Arraylist<BasicBlock> blocks;
+        private ArrayList<BasicBlock> blocks;
 
         ExtendedBasicBlock() {
             blocks = new ArrayList<BasicBlock>();
@@ -73,7 +73,7 @@ public class ControlFlowGraph {
 
     // set up CFG
     public ControlFlowGraph(ArrayList<Instruction> ir) {
-        basicBlocks = new ArrayList<BasicBlock();
+        basicBlocks = new ArrayList<BasicBlock>();
         ebbs = new ArrayList<ExtendedBasicBlock>();
         edges = new HashSet<>();
 
@@ -86,8 +86,8 @@ public class ControlFlowGraph {
             Instruction inst = ir.get(i);
 
             if(inst.isLabel()) {
-                labels.put(inst.getLabelName(), new Integer(i));
-            } else if (!inst.isEmpty() == 0) {
+                labels.put(inst.getName(), new Integer(i));
+            } else if (!inst.isEmpty()) {
                 if(branches().contains(inst.getOp())) {
                   //@TODO put it in our hashmap 
                 } else if(condBranches().contains(inst.getOp())) {
@@ -113,9 +113,9 @@ public class ControlFlowGraph {
             Integer intobj = new Integer(i);
             if(branchDestinations.contains(intobj)) {
                 //is it a destination of a branch? Lets start a new basic block
-            } else if (branches().containsKey(intobj)) {
+            } else if (branches().contains(intobj)) {
                 //lets make a basic block and put it into our ArrayList
-            } else if (i == irCode.size()--) {
+            } else if (i == ir.size() - 1) {
                 // congrats! were at the end of the program, lets put the rest into a basic block
             } else {
                 // no need to make a new block yet, so don't do anything
@@ -138,7 +138,7 @@ public class ControlFlowGraph {
         if(inst.isLabel() || inst.isEmpty()) {
             return false; // its an empty line or a label
         } else {
-            if(branches.contains(inst.getOp) || condBranches.contains(inst.getOp)) {
+            if(nonCondBranches.contains(inst.getOp()) || conditionalBranches.contains(inst.getOp())) {
                 return true; // will branch
             }
             return false; 
@@ -146,23 +146,23 @@ public class ControlFlowGraph {
     }
 
     public Set<String> branches() {
-        branches = new HashSet<>();
-        branches.add("goto");
-        branches.add("call");
-        branches.add("callr");
-        branches.add("return");
-        return branches;
+        Set<String> br = new HashSet<>();
+        br.add("goto");
+        br.add("call");
+        br.add("callr");
+        br.add("return");
+        return br;
 
     }
 
-    public Set<string> condBranches() {
-        condBranches = new HashSet<>();
-        condBranches.add("breq");
-        condBranches.add("brneq");
-        condBranches.add("brlt");
-        condBranches.add("brgep");
-        condBranches.add("brleq");
+    public Set<String> condBranches() {
+        Set<String> cb = new HashSet<>();
+        cb.add("breq");
+        cb.add("brneq");
+        cb.add("brlt");
+        cb.add("brgep");
+        cb.add("brleq");
 
-        return condBranches;
+        return cb;
     }
 }

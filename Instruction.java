@@ -11,7 +11,7 @@ import java.util.Map;
 public class Instruction {
     
     private ArrayList<String> operationAndParams;
-    String name;
+    private  String name;
     boolean isLabel;
 
 
@@ -30,7 +30,7 @@ public class Instruction {
     /*
     * typical assign statements are of this size
     */
-    public Instruction(String oper, String, dst, String src) {
+    public Instruction(String oper, String dst, String src) {
         operationAndParams = new ArrayList<String>();
         operationAndParams.add(oper);
         operationAndParams.add(dst);
@@ -68,8 +68,9 @@ public class Instruction {
         operationAndParams.add(oper);
         operationAndParams.add(funcName);
         for (int i = 0; i <  paramList.size(); i++) {
-            operationAndParams.add(paramList.get(i))
+            operationAndParams.add(paramList.get(i));
         }
+    }
 
     /*
     * function call with returns
@@ -91,12 +92,16 @@ public class Instruction {
 
 
     public boolean isEmpty() {
-        if(operationAndParams == 0 && !isLabel) {
+        if(operationAndParams.size() == 0 && !isLabel) {
             return true;
         } else {
             return false;
         }
     }
+
+    public boolean isLabel() {
+        return isLabel;
+        }
 
     /* @return operation of instruction
     *  anatomy of instruction
@@ -135,7 +140,7 @@ public class Instruction {
     }
 
     public ArrayList<String> getInstruction() {
-        return operationAndParam;
+        return operationAndParams;
     }
 
     /*

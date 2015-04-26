@@ -2,17 +2,17 @@ import java.util.ArrayList;
 
 public class BasicBlock {
 
-    private ArrayList<String> instructions; // holds all the instructions
-    private int firstLineNum;
+    private ArrayList<Instruction> instructions; // holds all the instructions
+    private int firstLineNum;     // start line of a basic block
     
     // constructor
     public BasicBlock(int start, ArrayList<Instruction> ir) {
         instructions = ir;
-        this.start = firstLineNum;
+        firstLineNum = start;
     }
     
     // retrieves all instructions from the BasicBlock
-    public ArrayList<String> getInstructions() {
+    public ArrayList<Instruction> getInstructions() {
         return instructions;
     }
     

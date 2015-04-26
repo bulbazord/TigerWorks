@@ -2,8 +2,12 @@ int function pow(n : int, x : int)
 begin
     begin
         var i, ans : int := 1;
-        for n := 1 to x do
-            ans := ans * n;
+        var n : int := 1;
+        while (n <= x) do
+            if (ans > n) then
+                break;
+            endif;
+            n := n + 1;
         enddo;
     end;
 end;

@@ -63,6 +63,7 @@ tokens {
 
     private Scope global_scope = new Scope(null, "global");
     private Scope current_scope = global_scope;
+    private Scope temp_scope = new Scope(null, "temp");
     private SymbolTable symbolTable = new SymbolTable(global_scope);
     private String current_function;
     private boolean errorExists = false;
@@ -1387,6 +1388,12 @@ addsubexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
                     default:
                     break;
                 }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("This temp name is already taken");
+                }
             }
         } -> ^(addsubop tiger_const expr)
         | (value addsubop) => value addsubop expr {
@@ -1407,6 +1414,12 @@ addsubexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
                     default:
                     break;
                 }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("This temp name is already taken");
+                }
             }
         } -> ^(addsubop value expr)
         | (LPAREN expr RPAREN addsubop) => LPAREN a1=expr RPAREN addsubop a2=expr {
@@ -1426,6 +1439,12 @@ addsubexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
 
                     default:
                     break;
+                }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("This temp name is already taken");
                 }
             }
         } -> ^(addsubop expr expr);
@@ -1449,6 +1468,12 @@ multdivexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
 
                     default:
                     break;
+                }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("This temp name is already taken");
                 }
             }
         } -> ^(multdivop tiger_const expr)
@@ -1478,6 +1503,12 @@ multdivexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
                     default:
                     break;
                 }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("That type name is already taken");
+                }
             }
         } -> ^(multdivop value expr)
         | value {
@@ -1505,6 +1536,12 @@ multdivexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
 
                     default:
                     break;
+                }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("That temp name is already taken");
                 }
             }
         } -> ^(multdivop expr expr);
@@ -1556,6 +1593,12 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                         if (arrAssign) {
                             generator.addArrayLoad($temp, $ID.text, temp2);
                         }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
                     }
                 } -> ^(VALUE ID indexexpr indexexpr)
                 | (ID LBRACK)
@@ -1585,6 +1628,12 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                         $index = $indexexpr.temp;
                         if (arrAssign) {
                             generator.addArrayLoad($temp, $ID.text, $index);
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
                         }
                     }
                 } -> ^(VALUE ID indexexpr)
@@ -1644,6 +1693,12 @@ indexaddexpr returns [String temp]
                             default:
                             break;
                         }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
                     }
                 } -> ^(addsubop tiger_const indexexpr)
                 | (value addsubop) => value addsubop indexexpr {
@@ -1661,6 +1716,12 @@ indexaddexpr returns [String temp]
                             default:
                             break;
                         }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
                     }
                 } -> ^(addsubop value indexexpr)
                 | (LPAREN indexexpr RPAREN addsubop) => LPAREN a1=indexexpr RPAREN addsubop a2=indexexpr {
@@ -1677,6 +1738,12 @@ indexaddexpr returns [String temp]
 
                             default:
                             break;
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
                         }
                     }
                 } -> ^(addsubop indexexpr indexexpr);
@@ -1697,6 +1764,12 @@ indexmultexpr returns [String temp]
 
                             default:
                             break;
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try { 
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
                         }
                     }
                 } -> ^(multdivop tiger_const indexexpr)
@@ -1720,6 +1793,12 @@ indexmultexpr returns [String temp]
                             default:
                             break;
                         }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
                     }
                 } -> ^(multdivop value indexexpr)
                 | value {
@@ -1742,6 +1821,12 @@ indexmultexpr returns [String temp]
                             default:
                             break;
 
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
                         }
                     }
                 } -> ^(multdivop indexexpr indexexpr);

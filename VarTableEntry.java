@@ -10,6 +10,9 @@ public class VarTableEntry extends SymbolTableEntry {
     /* This represents the true type */
     private PrimitiveType trueType;
 
+    /* This is each element's type */
+    private PrimitiveType elementType;
+
     /* Use when it has an initialized value. */
     public VarTableEntry(Scope scope, String name, SymbolTableEntry type, PrimitiveType trueType, Object value) {
         super(scope, name);

@@ -12,7 +12,7 @@ public class MIPSTranslator {
     private static final String AND = "and $d, $s, $t";
     private static final String ANDI = "and $d, $s, $imm";
     private static final String OR = "or $d, $s, $t";
-    private static final String ORI = "ori $d, $s, $t";
+    private static final String ORI = "ori $d, $s, $imm";
     private static final String BEQ = "beq $s, $t, $offset";
     private static final String BGEZ = "bgez $s, $offset"; // Branch on greater than or equal to zero
     private static final String BGTZ = "bgtz $s, $offset"; // Branch on greater than zero
@@ -23,9 +23,8 @@ public class MIPSTranslator {
     private static final String MULT = "mult $s, $t";
     private static final String J = "j $target"; // jump
     private static final String JR = "jr $target"; // jump to register
-    private static final String LW = "lw $t, offset($s)"; //load byte
-    private static final String SW = "sw $t, offset($s)"; // MEM[$s + offset] = $t
-
+    private static final String LW = "lw $t, $offset($s)"; //load byte
+    private static final String SW = "sw $t, $offset($s)"; // MEM[$s + offset] = $t
 
     public static List<String> IRtoMIPS (IRInstruction ir) {
         List<String> result = new LinkedList<String>();
@@ -171,6 +170,31 @@ public class MIPSTranslator {
         }
 
         return result;
+    }
+
+    public static String _sw (String t, String offset, String s) {
+        String template = SW;
+        return template.replace("$t", t).replace("$offset", offset).replace("$s", s);
+    }
+
+    public static String _lw (String t, String offset, String s) {
+        String template = LW;
+        return template.replace("$t", t).replace("$offset", offset).replace("$s", s);
+    }
+
+    public static String _mult (String s, String t) {
+        String template = MULT;
+        return template.replace("$s", s).replace("$t", t);
+    }
+
+    public static String _or (String d, String s, String imm) {
+        String template = OR;
+        return template.replace("$d", d).replace("$s", s).replace("$imm", imm);
+    }
+
+    public static String _ori (String d, String s, String t) {
+        String template = ORI;
+        return template.replace("$d", d).replace("$s", s).replace("$t", t);
     }
 
     public static String _add (String d, String s, String t) {

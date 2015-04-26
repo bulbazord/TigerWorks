@@ -1,9 +1,6 @@
 package CodeGeneration;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -43,13 +40,24 @@ public class CodeGenerator {
         writeMIPS(destinationFile);
     }
 
-    private void writeMIPS (String destination) {
-
+    private boolean writeMIPS (String destination) {
+        try {
+            FileWriter writer = new FileWriter(destination);
+            for (String m : mips) {
+                writer.write(m);
+            }
+            writer.close();
+        } catch (IOException e) {
+            System.out.println("ERROR: Could not write MIPS to file " + destination);
+            return false;
+        }
+        return true;
     }
 
     private void IRtoMIPs () {
         for (IRInstruction instruction : ir) {
-
+            List<String> mipsInstructions = MIPSTranslator.IRtoMIPS(instruction);
+            mips.addAll(mipsInstructions);
         }
     }
 }

@@ -17,46 +17,146 @@ public class NaiveRegisterAllocator {
         this.instructions = new ArrayList<String>();
     }
 
-    public void _assign(String op, String arg1, String arg2, String arg3, String instr) {
+    public void _assign(String op, String arg1, String arg2, String arg3) {
         int i = 1;
         // Regular assignment
         if (arg3.equals("")) {
             //Loads
             //If arg2 isn't a number
-            if (arg2.matches("\\d+")) {
+            if (!arg2.matches("\\d+")) {
                 instructions.add("load, " + arg2 + ", " + "$" + i + ", ");
+                instructions.add("store, " + "$"+i + ", " + arg1 + ", ");
+            } else {
+                instructions.add("store, " + arg2 + ", " + arg1 + ", ");
             }
-            //instructions.add(instr);
             //Stores
-            instructions.add("store, " + "$"+i + ", " + arg1 + ", ");
         // Array assignment
         } else {
             //Loads
-            instructions.add(instr);
+            instructions.add("load, " + arg2 + ", " + "$" + i + ", ");
+            instructions.add("load, " + arg3 + ", " + "$" + (i+1) + ", ");
             //Stores
         }
 
     }
 
-    public void _binary(String op, String arg1, String arg2, String arg3, String instr) {
+    public void _binary(String op, String arg1, String arg2, String arg3) {
         int i = 1;
         //Loads here
-        instructions.add(instr);
+        if (!arg1.matches("\\d+")) {
+            instructions.add("load, " + arg1 + ", " + "$" + i + ", ");
+            arg1 = "$"+i;
+            i++;
+        }
+
+        if (!arg2.matches("\\d+")) {
+            instructions.add("load, " + arg2 + ", " + "$" + i + ", ");
+            arg2 = "$"+i;
+            i++;
+        }
+
+        switch(op) {
+            case "add": 
+            instructions.add("add, " + arg1 + ", " + arg2 + ", " + "$"+i);
+            break;
+
+            case "sub": 
+            instructions.add("sub, " + arg1 + ", " + arg2 + ", " + "$"+i);
+            break;
+
+            case "mult": 
+            instructions.add("mult, " + arg1 + ", " + arg2 + ", " + "$"+i);
+            break;
+
+            case "div": 
+            instructions.add("div, " + arg1 + ", " + arg2 + ", " + "$"+i);
+            break;
+
+            case "and": 
+            instructions.add("and, " + arg1 + ", " + arg2 + ", " + "$"+i);
+            break;
+
+            case "or": 
+            instructions.add("or, " + arg1 + ", " + arg2 + ", " + "$"+i);
+            break;
+
+            default:
+            break;
+
+        }
+
         //Stores here
+        instructions.add("store, " + "$"+i + ", " + arg3 + ", ");
     }
 
-    public void _branch(String op, String arg1, String arg2, String arg3, String instr) {
+    public void _branch(String op, String arg1, String arg2, String arg3) {
         int i = 1;
         //Loads here
-        instructions.add(instr);
-        //Stores here
+        if (!arg1.matches("\\d+")) {
+            instructions.add("load, " + arg1 + ", " + "$" + i + ", ");
+            arg1 = "$"+i;
+            i++;
+        }
+        if (!arg2.matches("\\d+")) {
+            instructions.add("load, " + arg2 + ", " + "$" + i + ", ");
+            arg2 = "$"+i;
+            i++;
+        }
+        //Gen instruction here
+        switch(op) {
+            case "breq":
+            instructions.add("breq, " + arg1 + ", " + arg2 + ", " + arg3);
+            break;
+
+            case "brneq":
+            instructions.add("brneq, " + arg1 + ", " + arg2 + ", " + arg3);
+            break;
+
+            case "brlt":
+            instructions.add("brlt, " + arg1 + ", " + arg2 + ", " + arg3);
+            break;
+
+            case "brleq":
+            instructions.add("brleq, " + arg1 + ", " + arg2 + ", " + arg3);
+            break;
+
+            case "brgt":
+            instructions.add("brgt, " + arg1 + ", " + arg2 + ", " + arg3);
+            break;
+
+            case "brgeq":
+            instructions.add("brgeq, " + arg1 + ", " + arg2 + ", " + arg3);
+            break;
+
+            default:
+            break;
+        }
     }
 
-    public void _array(String op, String arg1, String arg2, String arg3, String instr) {
+    public void _array(String op, String arg1, String arg2, String arg3) {
         int i = 1;
-        //Loads here
-        instructions.add(instr);
-        //Stores here
+        if (op.equals("array_load")) {
+            if (!arg3.matches("\\d+")) {
+                instructions.add("load, " + arg3 + ", " + "$"+i);
+                arg3 = "$"+i;
+                i++;
+            }
+            instructions.add("load, " + arg2 + "["+arg3+"]" + ", " + "$"+i + ", ");
+            instructions.add("store, " + "$"+i + ", " + arg1 + ", ");
+        } else {
+            if (!arg3.matches("\\d+")) {
+                instructions.add("load, " + arg3 + ", " + "$"+i);
+                arg3 = "$"+i;
+                i++;
+            }
+            if (!arg2.matches("\\d+")) {
+                instructions.add("load, " + arg2 + ", " + "$"+i);
+                arg2 = "$"+i;
+                i++;
+            }
+
+            instructions.add("store, " + arg3 + ", " + arg1 + "["+arg2+"]"+ ", ");
+        }
     }
 
 
@@ -101,13 +201,13 @@ public class NaiveRegisterAllocator {
 
                         // Handle instructions here
                         if (op.equals("assign")) { 
-                            _assign(op, instr[0], instr[1], instr[2], actual);
+                            _assign(op, instr[0], instr[1], instr[2]);
                         } else if (op.equals("add") || op.equals("sub") || op.equals("mult") || op.equals("div")) { 
-                            _binary(op, instr[0], instr[1], instr[2], actual); 
+                            _binary(op, instr[0], instr[1], instr[2]); 
                         } else if (op.equals("breq") || op.equals("brneq") || op.equals("brlt") || op.equals("brgt") || op.equals("brgeq") || op.equals("brleq")) {
-                            _branch(op, instr[0], instr[1], instr[2], actual); 
+                            _branch(op, instr[0], instr[1], instr[2]); 
                         } else if (op.equals("array_store") || op.equals("array_load")) {
-                            _array(op, instr[0], instr[1], instr[2], actual); 
+                            _array(op, instr[0], instr[1], instr[2]); 
                         } else {
                             System.out.println("Unrecognized operation in IR");
                         }

@@ -56,17 +56,32 @@ tokens {
 @parser::header {
     import java.util.ArrayList;
     import java.util.List;
+    import java.util.Stack;
 }
 
 @parser::members {
 
     private Scope global_scope = new Scope(null, "global");
     private Scope current_scope = global_scope;
+    private Scope temp_scope = new Scope(null, "temp");
     private SymbolTable symbolTable = new SymbolTable(global_scope);
     private String current_function;
     private boolean errorExists = false;
     private static final String DEFAULT_FILENAME = "ir.tigir";
     private IRGenerator generator = new IRGenerator();
+    private String startLabel;
+    private String thenLabel;
+    private String elseLabel;
+    private String endLabel;
+    private String doneLabel;
+    private Stack<String> labelStack = new Stack<String>();
+    private List<String> orLabelList = new ArrayList<String>();
+    //private Stack<String> condLabelStack = new Stack<String>();
+    //private Stack<String> endLabelStack = new Stack<String>();
+
+    private boolean funcAssign;
+    private boolean arrAssign;
+    private String tempValue;
 
     public SemanticObject evaluateType(SemanticObject a1, SemanticObject a2, String binaryOp, int lineNumber) {
         if (a1 == null && a2 == null) {
@@ -445,12 +460,16 @@ tigerprogram returns [SymbolTable symbolTable, boolean errorExists]
     : typedecllist functdecllist mainfunction EOF {
         $symbolTable = symbolTable;
         $errorExists = errorExists;
-        generator.writeToFile(DEFAULT_FILENAME);
+        if (!errorExists) {
+            generator.addLabel("#END");
+            generator.writeToFile(DEFAULT_FILENAME);
+        }
     }
     -> ^(PROG typedecllist functdecllist mainfunction);
 
 // typedecllist stuff
-typedecllist    : (typedecl)*;
+typedecllist    : typedecl*
+                -> ^(TYPEDECLLIST typedecl*);
 typedecl        : TYPE ID EQ type[$ID.text] SEMI
                 -> ^(EQ ID type);
 
@@ -512,7 +531,9 @@ basetype returns [int lineNumber]
                 ;
 
 //Function declaration list stuff
-functdecllist   : (functdecl)*;
+functdecllist   : (functdecl)*
+                -> ^(FUNCTDECLLIST functdecl*)
+                ;
 //TODO
 functdecl       : VOID_FUNCTION ID {
                     current_scope = new Scope(current_scope, $ID.text);
@@ -617,27 +638,32 @@ mainfunction    : VOID_MAIN {
                         System.out.print("Line" + $VOID_MAIN.getLine() + ": ");
                         System.out.println(nse.getMessage());
                     }
+                    //IR Generation
+                    generator.addFunctionDeclaration("main");
                 } LPAREN RPAREN BEGIN {
                     current_scope = new Scope(current_scope, "main");
                     current_function = "main";
                 } blocklist END {
                     current_scope = current_scope.getParent();
-                } SEMI
+                } SEMI {
+                }
                 -> ^(MAIN blocklist);
 
 // Block list
 //TODO
-blocklist       : (block)+;
+blocklist       : (block)+ -> ^(BLOCKLIST block+);
 block           : BEGIN {
                     current_scope = new Scope(current_scope);
                 } declsegment statseq END {
                     current_scope = current_scope.getParent();
-                } SEMI
+                } SEMI 
                 -> ^(BLOCK declsegment statseq);
 
 // Declaration statements
-declsegment     : typedecllist vardecllist;
-vardecllist     : (vardecl)*;
+declsegment     : typedecllist vardecllist
+                -> ^(DECLSEGMENT typedecllist vardecllist);
+vardecllist     : (vardecl)*
+                -> ^(VARDECLLIST vardecl*);
 
 
 
@@ -746,6 +772,32 @@ vardecl         : (VAR idlist COLON typeid ASSIGN)
                                 System.out.print("Line " + $VAR.getLine() + ": ");
                                 System.out.println(nse.getMessage());
                                 errorExists = true;
+                            }
+                        }
+                    }
+                    // IR Generation
+                    if (!errorExists) {
+                        if (((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT
+                                || ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT)
+                        {
+                            String idListRaw = $idlist.text.replaceAll("\\s", "");;
+                            String[] idList = idListRaw.split(",");
+                            for (String var : idList) {
+                                generator.addAssignment(var + "#" + current_function, $tiger_const.text);
+                            }
+                        } else {
+                            String idListRaw = $idlist.text.replaceAll("\\s", "");;
+                            String[] idList = idListRaw.split(",");
+                            int arraySize = 0;
+                            if (((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR
+                                || ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT_ARR) {
+                                arraySize = ((TypeTableEntry)type).getLength();
+                            } else {
+                                arraySize = ((TypeTableEntry)type).getLength() 
+                                            * ((TypeTableEntry)type).getHeight();
+                            }
+                            for (String var : idList) {
+                                generator.addAssignment(var + "#" + current_function, arraySize, $tiger_const.text);
                             }
                         }
                     }
@@ -866,7 +918,10 @@ idlist          : ID (COMMA ID)*
 //TODO
 assignrule      : (value ASSIGN funccall) 
 
-                => value ASSIGN funccall SEMI {
+                => value ASSIGN {
+                    funcAssign = true;
+                    tempValue = $value.temp;
+                } funccall SEMI {
                     SymbolTableEntry variable = symbolTable.get(current_scope, $value.text, false);
                     if (variable == null || variable instanceof TypeTableEntry) {
                         errorExists = true;
@@ -886,10 +941,15 @@ assignrule      : (value ASSIGN funccall)
                             }
                         }
                     }
+                    // IR Generation
+
                 }
                 -> ^(ASSIGN value funccall)
                 | (value ASSIGN expr)
-                => value ASSIGN expr SEMI {
+                => value ASSIGN {
+                    arrAssign = true;
+                } expr SEMI {
+                    arrAssign = false;
                     SymbolTableEntry variable = symbolTable.get(current_scope, $value.name, false);
                     if (variable == null || variable instanceof TypeTableEntry) {
                         errorExists = true;
@@ -911,12 +971,21 @@ assignrule      : (value ASSIGN funccall)
                             }
                         }
                     }
+                    //IR Generation
+                    if (!errorExists) {
+                        if ($value.arr) {
+                            generator.addArrayStore($value.name + "#" + current_function, $value.index, $expr.temp);
+                        } else {
+                            //JUMP
+                            generator.addAssignment($value.temp, $expr.temp);
+                        }
+                    }
                 }
                 -> ^(ASSIGN value expr);
 
 //TODO
 funccall returns [String name]
-                : ID LPAREN argumentlist[new ArrayList<SemanticObject>()] RPAREN {
+                : ID LPAREN argumentlist[new ArrayList<SemanticObject>(), new ArrayList<String>()] RPAREN {
                     SymbolTableEntry function = symbolTable.get(global_scope, $ID.text, true);
                     if (function == null) {
                         errorExists = true;
@@ -942,57 +1011,156 @@ funccall returns [String name]
                         }
                     }
                     $name = $ID.text;
+                    // IR Generation
+                    if (!errorExists) {
+                        if (funcAssign) {
+                            generator.addCallr(tempValue, $name, $argumentlist.paramList.toArray(new String[$argumentlist.paramList.size()]));
+                        } else {
+                            generator.addCall($name, $argumentlist.paramList.toArray(new String[$argumentlist.paramList.size()]));
+                        }
+                    }
                 }
                 -> ^(FUNCCALL ID argumentlist);
 
 //TODO
-argumentlist[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
-                : (a1=argument[args] {
+argumentlist[List<SemanticObject> args, List<String> params] returns [List<SemanticObject> argTypes, List<String> paramList]
+                : (a1=argument[args, params] {
                     $argTypes = $args;
-                } (COMMA argument[args])*)?
+                    $paramList = $params;
+                } (COMMA argument[args, params])*)?
                 -> ^(ARGUMENTLIST (argument+)?);
 
 //TODO
-argument[List<SemanticObject> args] returns [List<SemanticObject> argTypes]
+argument[List<SemanticObject> args, List<String> params] returns [List<SemanticObject> argTypes, List<String> paramList]
                 : expr {
                     if (!$expr.isBool) {
                         args.add($expr.typeChecker);
+                        params.add($expr.temp);
                         $argTypes = args;
+                        $paramList = params;
                     }
                 };
 
-statseq         : (stat)+;
+statseq         : (stat)+
+                -> ^(STATS stat+);
 
 //TODO
 ifthen          : (IF expr THEN statseq ELSE) 
-                => IF expr {
+                => IF {
+                    if (!errorExists) {
+                        labelStack.push(thenLabel);
+                        labelStack.push(endLabel);
+                        thenLabel = generator.generateLabel();
+                        elseLabel = generator.generateLabel();
+                        endLabel = generator.generateLabel();
+                    }
+                } expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
                         System.out.print("Line " + $IF.getLine() + ": ");
                         System.out.println("Conditional is not a boolean.");
                     }
-                } THEN statseq ELSE statseq ENDIF SEMI
+                    if (!errorExists) {
+                        generator.addGoto(elseLabel);
+                        for (String label : orLabelList) {
+                            generator.addLabel(label);
+                        }
+                        orLabelList = new ArrayList<String>();
+                        generator.addLabel(thenLabel);
+                    }
+                } THEN statseq ELSE {
+                    if (!errorExists) {
+                        generator.addGoto(endLabel);
+                        generator.addLabel(elseLabel);
+                    }
+                } statseq {
+                    if (!errorExists) {
+                        generator.addLabel(endLabel);
+                        endLabel = labelStack.pop();
+                        thenLabel = labelStack.pop();
+                    }
+                } ENDIF SEMI
                 -> ^(IF expr statseq ^(ELSE statseq)?)
-                | IF expr {
+                | IF {
+                    if (!errorExists) {
+                        labelStack.push(thenLabel);
+                        labelStack.push(endLabel);
+                        thenLabel = generator.generateLabel();
+                        endLabel = generator.generateLabel();
+                    }
+                } expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
                         System.out.print("Line " + $IF.getLine() + ": ");
                         System.out.println("Conditional is not a boolean.");
                     }
-                } THEN statseq ENDIF SEMI
+                    if (!errorExists) {
+                        generator.addGoto(endLabel);
+                        generator.addLabel(thenLabel);
+                    }
+                } THEN statseq ENDIF SEMI {
+                    if (!errorExists) {
+                        generator.addLabel(endLabel);
+                        endLabel = labelStack.pop();
+                        thenLabel = labelStack.pop();
+                    }
+                }
                 -> ^(IF expr statseq);
 
 //TODO
-whileloop       : WHILE expr {
+whileloop       : WHILE  {
+                    if (!errorExists) {
+                        labelStack.push(thenLabel);
+                        labelStack.push(doneLabel);
+                        labelStack.push(startLabel);
+                        thenLabel = generator.generateLabel();
+                        doneLabel = generator.generateLabel();
+                        startLabel = generator.generateLabel();
+                        generator.addLabel(startLabel);
+                    }
+                } expr {
                     if ($expr.isBool == false) {
                         errorExists = true;
                         System.out.print("Line " + $WHILE.getLine() + ": ");
                         System.out.println("Conditional is not a boolean.");
                     }
-                } DO statseq ENDDO SEMI
+                    if (!errorExists) {
+                        generator.addGoto(doneLabel);
+                        generator.addLabel(thenLabel);
+                    }
+                } DO statseq {
+                    if (!errorExists) {
+                        generator.addGoto(startLabel);
+                        generator.addLabel(doneLabel);
+                        startLabel = labelStack.pop();
+                        doneLabel = labelStack.pop();
+                        thenLabel = labelStack.pop();
+                    }
+                } ENDDO SEMI
                 -> ^(WHILE expr statseq);
 //TODO
-forloop         : FOR ID ASSIGN indexexpr TO indexexpr DO statseq ENDDO SEMI
+forloop         : FOR ID ASSIGN a1=indexexpr {
+                    if (!errorExists) {
+                        generator.addAssignment($ID.text + "#" + current_function, $a1.temp);
+                        labelStack.push(thenLabel);
+                        labelStack.push(doneLabel);
+                        thenLabel = generator.generateLabel();
+                        doneLabel = generator.generateLabel();
+                    }
+                } TO a2=indexexpr {
+                    if (!errorExists) {
+                        generator.addLabel(thenLabel);
+                        generator.addBREQ($ID.text + "#" + current_function, $a2.temp, doneLabel);
+                    }
+                } DO statseq ENDDO SEMI {
+                    if (!errorExists) {
+                        generator.addAddition($ID.text + "#" + current_function, ""+1, $ID.text + "#" + current_function);
+                        generator.addGoto(thenLabel);
+                        generator.addLabel(doneLabel);
+                        doneLabel = labelStack.pop();
+                        thenLabel = labelStack.pop();
+                    }
+                }
                 -> ^(FOR ID ASSIGN indexexpr indexexpr statseq);
 //TODO
 returnstatrule  : RETURN^ expr {
@@ -1002,10 +1170,18 @@ returnstatrule  : RETURN^ expr {
                         System.out.print("Line " + $RETURN.getLine() + ": ");
                         System.out.println("Returned type and function return type are incompatible.");
                     }
+                    // IR Generation
+                    if (!errorExists) {
+                        generator.addReturn($expr.temp);
+                    }
                 } SEMI!;
-breakstatrule   : BREAK^ SEMI!;
+breakstatrule   : BREAK^ {
+                    if (!errorExists) {
+                        generator.addGoto(doneLabel);
+                    }
+                } SEMI!;
 stat            : (value ASSIGN) => assignrule 
-                | funccall SEMI!
+                | {funcAssign = false;} funccall SEMI!
                 | ifthen 
                 | whileloop 
                 | forloop 
@@ -1021,94 +1197,355 @@ stat            : (value ASSIGN) => assignrule
 // Match tiger_consts, then values, then (expr) bin (expr)
 
 //TODO
-expr returns [SemanticObject typeChecker, boolean isBool]
+expr returns [SemanticObject typeChecker, boolean isBool, String temp]
         : (logicexpr) => logicexpr {
             $typeChecker = $logicexpr.typeChecker;
             $isBool = $logicexpr.isBool;
+            if (!errorExists) {
+                $temp = $logicexpr.temp;
+            }
         }
         | (compareexpr) => compareexpr {
             $typeChecker = $compareexpr.typeChecker;
             $isBool = $compareexpr.isBool;
+            if (!errorExists) {
+                $temp = $compareexpr.temp;
+            }
         }
         | (addsubexpr) => addsubexpr {
             $typeChecker = $addsubexpr.typeChecker;
             $isBool = $addsubexpr.isBool;
+            if (!errorExists) {
+                $temp = $addsubexpr.temp;
+            }
         }
         | (multdivexpr) => multdivexpr {
             $typeChecker = $multdivexpr.typeChecker;
             $isBool = $multdivexpr.isBool;
+            if (!errorExists) {
+                $temp = $multdivexpr.temp;
+            }
         }
         | LPAREN! a1=expr RPAREN! {
             $typeChecker = $a1.typeChecker;
             $isBool = $a1.isBool;
+            if (!errorExists) {
+                $temp = $a1.temp;
+            }
         };
 
 //TODO
-logicexpr returns [SemanticObject typeChecker, boolean isBool]
-        : (tiger_const logicop) => tiger_const logicop expr {
-            $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $logicop.text, $logicexpr.start.getLine());
-            $isBool = true;
-        } -> ^(logicop tiger_const expr)
-        | (value logicop) => value logicop expr {
-            $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $logicop.text, $logicexpr.start.getLine());
-            $isBool = true;
-        } -> ^(logicop value expr)
-        | (LPAREN expr RPAREN logicop) => LPAREN a1=expr RPAREN logicop a2=expr {
-            $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $logicop.text, $logicexpr.start.getLine());
-            $isBool = true;
+logicexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
+        : (LPAREN expr RPAREN logicop) => LPAREN {
+            if (!errorExists) {
+                labelStack.push(thenLabel);
+                thenLabel = generator.generateLabel();
+            }
+        } a1=expr RPAREN logicop {
+            if (!errorExists) {
+                if ($logicop.op == Operator.AND) {
+                    generator.addGoto(elseLabel);
+                    generator.addLabel(thenLabel);
+                    thenLabel = labelStack.pop();
+                } else {
+                    orLabelList.add(thenLabel);
+                    thenLabel = labelStack.pop();
+                }
+            }
+        } a2=expr {
+            if (!errorExists) {
+                $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $logicop.text, $logicexpr.start.getLine());
+                $isBool = true;
+            }
         } -> ^(logicop expr expr);
 
 //TODO
-compareexpr returns [SemanticObject typeChecker, boolean isBool]
+compareexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         : (tiger_const compareop) => tiger_const compareop expr {
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $compareop.text, $compareexpr.start.getLine());
-            $isBool = $tiger_const.isBool || $compareop.isBool || $expr.isBool;
+            $isBool = true;
+            // IR Generation
+            if (!errorExists) {
+                switch ($compareop.op) {
+                    case EQ:
+                    generator.addBREQ($tiger_const.text, $expr.temp, thenLabel);
+                    break;
+
+                    case NEQ:
+                    generator.addBRNEQ($tiger_const.text, $expr.temp, thenLabel);
+                    break;
+
+                    case LT:
+                    generator.addBRLT($tiger_const.text, $expr.temp, thenLabel);
+                    break;
+
+                    case LTE:
+                    generator.addBRLEQ($tiger_const.text, $expr.temp, thenLabel);
+                    break;
+
+                    case GT:
+                    generator.addBRGT($tiger_const.text, $expr.temp, thenLabel);
+                    break;
+
+                    case GTE:
+                    generator.addBRGEQ($tiger_const.text, $expr.temp, thenLabel);
+                    break;
+
+                    default:
+                    break;
+
+                }
+            }
         } -> ^(compareop tiger_const expr)
         | (value compareop) => value compareop expr {
             $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $compareop.text, $compareexpr.start.getLine());
-            $isBool = $value.isBool || $compareop.isBool || $expr.isBool;
+            $isBool = true;
+            // IR Generation 
+            if (!errorExists) {
+                switch ($compareop.op) {
+                    case EQ:
+                    generator.addBREQ($value.temp, $expr.temp, thenLabel);
+                    break;
+
+                    case NEQ:
+                    generator.addBRNEQ($value.temp, $expr.temp, thenLabel);
+                    break;
+
+                    case LT:
+                    generator.addBRLT($value.temp, $expr.temp, thenLabel);
+                    break;
+
+                    case LTE:
+                    generator.addBRLEQ($value.temp, $expr.temp, thenLabel);
+                    break;
+
+                    case GT:
+                    generator.addBRGT($value.temp, $expr.temp, thenLabel);
+                    break;
+
+                    case GTE:
+                    generator.addBRGEQ($value.temp, $expr.temp, thenLabel);
+                    break;
+
+                    default:
+                    break;
+
+                }       
+            }
         } -> ^(compareop value expr)
         | (LPAREN expr RPAREN logicop) => LPAREN a1=expr RPAREN compareop a2=expr {
             $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $compareop.text, $compareexpr.start.getLine());
-            $isBool = $a1.isBool || $compareop.isBool || $a2.isBool;
+            $isBool = true;
+            // IR Generation
+            if (!errorExists) {
+                switch ($compareop.op) {
+                    case EQ:
+                    generator.addBREQ($a1.temp, $a2.temp, thenLabel);
+                    break;
+
+                    case NEQ:
+                    generator.addBRNEQ($a1.temp, $a2.temp, thenLabel);
+                    break;
+
+                    case LT:
+                    generator.addBRLT($a1.temp, $a2.temp, thenLabel);
+                    break;
+
+                    case LTE:
+                    generator.addBRLEQ($a1.temp, $a2.temp, thenLabel);
+                    break;
+
+                    case GT:
+                    generator.addBRGT($a1.temp, $a2.temp, thenLabel);
+                    break;
+
+                    case GTE:
+                    generator.addBRGEQ($a1.temp, $a2.temp, thenLabel);
+                    break;
+
+                    default:
+                    break;
+
+                }       
+            }
         } -> ^(compareop expr expr);
 
 //TODO
-addsubexpr returns [SemanticObject typeChecker, boolean isBool]
+addsubexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         : (tiger_const addsubop) => tiger_const addsubop expr {
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
-            $isBool = $tiger_const.isBool || $addsubop.isBool || $expr.isBool;
+            $isBool = false;
+            // IR Generation
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch($addsubop.op) {
+                    case PLUS:
+                    generator.addAddition($tiger_const.text, $expr.temp, $temp);
+                    break;
+
+                    case MINUS:
+                    generator.addSubtraction($tiger_const.text, $expr.temp, $temp);
+                    break;
+
+                    default:
+                    break;
+                }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("This temp name is already taken");
+                }
+            }
         } -> ^(addsubop tiger_const expr)
         | (value addsubop) => value addsubop expr {
             $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
-            $isBool = $value.isBool || $addsubop.isBool || $expr.isBool;
+            $isBool = false;
+            // IR Generation
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch ($addsubop.op) {
+                    case PLUS:
+                    generator.addAddition($value.temp, $expr.temp, $temp);
+                    break;
+
+                    case MINUS:
+                    generator.addSubtraction($value.temp, $expr.temp, $temp);
+                    break;
+
+                    default:
+                    break;
+                }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("This temp name is already taken");
+                }
+            }
         } -> ^(addsubop value expr)
         | (LPAREN expr RPAREN addsubop) => LPAREN a1=expr RPAREN addsubop a2=expr {
             $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $addsubexpr.text, $addsubexpr.start.getLine());
-            $isBool = $a1.isBool || $addsubop.isBool || $a2.isBool;
+            $isBool = false;
+            // IR Generation
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch ($addsubop.op) {
+                    case PLUS:
+                    generator.addAddition($a1.temp, $a2.temp, $temp);
+                    break;
+
+                    case MINUS:
+                    generator.addSubtraction($a1.temp, $a2.temp, $temp);
+                    break;
+
+                    default:
+                    break;
+                }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("This temp name is already taken");
+                }
+            }
         } -> ^(addsubop expr expr);
 
 //TODO
-multdivexpr returns [SemanticObject typeChecker, boolean isBool]
+multdivexpr returns [SemanticObject typeChecker, boolean isBool, String temp]
         : (tiger_const multdivop) => tiger_const multdivop expr {
             $typeChecker = evaluateType($tiger_const.typeChecker, $expr.typeChecker, $multdivop.text, $multdivop.start.getLine());
-            $isBool = $tiger_const.isBool || $multdivop.isBool || $expr.isBool;
+            $isBool = false;
+            // IR Generation
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch($multdivop.op) {
+                    case MULT:
+                    generator.addMultiplication($tiger_const.text, $expr.temp, $temp);
+                    break;
+
+                    case DIV:
+                    generator.addDivision($tiger_const.text, $expr.temp, $temp);
+                    break;
+
+                    default:
+                    break;
+                }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("This temp name is already taken");
+                }
+            }
         } -> ^(multdivop tiger_const expr)
         | tiger_const {
             $typeChecker = $tiger_const.typeChecker;
-            $isBool = $tiger_const.isBool;
+            $isBool = false;
+            // IR Generation
+            if (!errorExists) {
+                $temp = $tiger_const.text;
+            }
         }
         | (value multdivop) => value multdivop expr {
             $typeChecker = evaluateType($value.typeChecker, $expr.typeChecker, $multdivop.text, $multdivop.start.getLine());
-            $isBool = $value.isBool || $multdivop.isBool || $expr.isBool;
+            $isBool = false;
+            // IR Generation
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch ($multdivop.op) {
+                    case MULT:
+                    generator.addMultiplication($value.temp, $expr.temp, $temp);
+                    break;
+
+                    case DIV:
+                    generator.addDivision($value.temp, $expr.temp, $temp);
+                    break;
+                    
+                    default:
+                    break;
+                }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("That type name is already taken");
+                }
+            }
         } -> ^(multdivop value expr)
         | value {
             $typeChecker = $value.typeChecker;
-            $isBool = $value.isBool;
+            $isBool = false;
+            // IR Generation
+            if (!errorExists) {
+                $temp = $value.temp;
+            }
         }
         | (LPAREN expr RPAREN multdivop) => LPAREN a1=expr RPAREN multdivop a2=expr {
             $typeChecker = evaluateType($a1.typeChecker, $a2.typeChecker, $multdivop.text, $multdivop.start.getLine());
-            $isBool = $a1.isBool || $multdivop.isBool || $a2.isBool;
+            $isBool = false;
+            // IR Generation
+            if (!errorExists) {
+                $temp = generator.generateTemp();
+                switch($multdivop.op) {
+                    case MULT:
+                    generator.addMultiplication($a1.temp, $a2.temp, $temp);
+                    break;
+
+                    case DIV:
+                    generator.addDivision($a1.temp, $a2.temp, $temp);
+                    break;
+
+                    default:
+                    break;
+                }
+                SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                try {
+                    symbolTable.put(temp);
+                } catch (NameSpaceException e) {
+                    System.out.println("That temp name is already taken");
+                }
+            }
         } -> ^(multdivop expr expr);
 
 // Constant/Value
@@ -1125,7 +1562,7 @@ tiger_const returns [SemanticObject typeChecker, boolean isBool]
 
 
 //TODO
-value returns [String name, SemanticObject typeChecker, boolean isBool]
+value returns [String name, SemanticObject typeChecker, boolean isBool, String temp, boolean arr, String index]
                 : (ID LBRACK indexexpr RBRACK LBRACK)
                 => ID LBRACK a1=indexexpr RBRACK LBRACK a2=indexexpr RBRACK {
                     SymbolTableEntry variable = symbolTable.get(current_scope, $ID.text, false);
@@ -1135,27 +1572,9 @@ value returns [String name, SemanticObject typeChecker, boolean isBool]
                         System.out.println($ID.text + " was either never declared or is declared as a type in the current scope.");
                         $typeChecker = null;
                     } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_INT_2D_ARR) {
-                        int first = Integer.parseInt($a1.text);
-                        int second = Integer.parseInt($a2.text);
-                        if ((first > ((VarTableEntry)variable).getType().getLength() || first < 0) ||
-                            (second > ((VarTableEntry)variable).getType().getHeight() || second < 0)) {
-                            System.out.print("Line " + $ID.getLine() + ": ");
-                            System.out.println("Out of bounds index ");
-                            $typeChecker = null;
-                        } else {
-                            $typeChecker = new SemanticObject(false, symbolTable.getTigerInt(), $value.text);
-                        }
+                        $typeChecker = new SemanticObject(false, symbolTable.getTigerInt(), $value.text);
                     } else if ((((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_FIXEDPT_2D_ARR)) {
-                        int first = Integer.parseInt($a1.text);
-                        int second = Integer.parseInt($a2.text);
-                        if ((first > ((VarTableEntry)variable).getType().getLength() || first < 0) ||
-                            (second > ((VarTableEntry)variable).getType().getHeight() || second < 0)) {
-                            System.out.print("Line " + $ID.getLine() + ": ");
-                            System.out.println("Out of bounds index ");
-                            $typeChecker = null;
-                        } else {
-                            $typeChecker = new SemanticObject(false, symbolTable.getTigerFixedpt(), $value.text);
-                        }
+                        $typeChecker = new SemanticObject(false, symbolTable.getTigerFixedpt(), $value.text);
                     } else {
                         errorExists = true;
                         System.out.print("Line " + $ID.getLine() + ": ");
@@ -1164,6 +1583,25 @@ value returns [String name, SemanticObject typeChecker, boolean isBool]
                     }
                     $isBool = false;
                     $name = $ID.text;
+                    //IR Generation
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        $arr = true;
+                        String temp1 = generator.generateTemp();
+                        String temp2 = generator.generateTemp();
+                        generator.addMultiplication($a1.temp, "" + ((VarTableEntry)variable).getType().getLength(), temp1);
+                        generator.addAddition(temp1, $a2.temp, temp2);
+                        $index = temp2;
+                        if (arrAssign) {
+                            generator.addArrayLoad($temp, $ID.text + "#" + current_function, temp2);
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
+                    }
                 } -> ^(VALUE ID indexexpr indexexpr)
                 | (ID LBRACK)
                 => ID LBRACK indexexpr RBRACK {
@@ -1174,23 +1612,9 @@ value returns [String name, SemanticObject typeChecker, boolean isBool]
                         System.out.println($ID.text + " was either never declared or is declared as a type in the current scope.");
                         $typeChecker = null;
                     } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_INT_ARR) { 
-                        int first = Integer.parseInt($indexexpr.text);
-                        if (first > ((VarTableEntry)variable).getType().getLength() || first < 0) {
-                            System.out.print("Line " + $ID.getLine() + ": ");
-                            System.out.println("Out of bounds index ");
-                            $typeChecker = null;
-                        } else {
-                            $typeChecker = new SemanticObject(false, symbolTable.getTigerInt(), $value.text);
-                        }
+                        $typeChecker = new SemanticObject(false, symbolTable.getTigerInt(), $value.text);
                     } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR) { 
-                        int first = Integer.parseInt($indexexpr.text);
-                        if (first > ((VarTableEntry)variable).getType().getLength() || first < 0) {
-                            System.out.print("Line " + $ID.getLine() + ": ");
-                            System.out.println("Out of bounds index ");
-                            $typeChecker = null;
-                        } else {
-                            $typeChecker = new SemanticObject(false, symbolTable.getTigerFixedpt(), $value.text);
-                        }
+                        $typeChecker = new SemanticObject(false, symbolTable.getTigerFixedpt(), $value.text);
                     } else {
                         errorExists = true;
                         System.out.print("Line " + $ID.getLine() + ": ");
@@ -1199,6 +1623,21 @@ value returns [String name, SemanticObject typeChecker, boolean isBool]
                     }
                     $isBool = false;
                     $name = $ID.text;
+                    //IR Generator
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        $arr = true;
+                        $index = $indexexpr.temp;
+                        if (arrAssign) {
+                            generator.addArrayLoad($temp, $ID.text + "#" + current_function, $index);
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
+                    }
                 } -> ^(VALUE ID indexexpr)
                 | ID {
                     SymbolTableEntry variable = symbolTable.get(current_scope, $ID.text, false);
@@ -1213,34 +1652,215 @@ value returns [String name, SemanticObject typeChecker, boolean isBool]
                     }
                     $isBool = false;
                     $name = $ID.text;
+                    // IR Generator
+                    if (!errorExists) {
+                        $temp = $ID.text + "#" + current_function;
+                    }
                 } -> ^(VALUE ID);
 
 // Expression list
 exprlist        : (expr (COMMA! expr)*)?;
 
 // Index expression
-indexexpr       : indexmultexpr (addsubop^ indexmultexpr)*;
-indexmultexpr   : indexlit (multdivop^ indexlit)*; 
-indexlit        : tiger_const | ID | LPAREN! indexexpr RPAREN!;
+indexexpr returns [String temp]
+                : (indexaddexpr) => indexaddexpr {
+                    if (!errorExists) {
+                        $temp = $indexaddexpr.temp;
+                    }
+                }
+                | (indexmultexpr) => indexmultexpr {
+                    if (!errorExists) {
+                        $temp = $indexmultexpr.temp;
+                    }
+                }
+                | LPAREN! a1=indexexpr RPAREN! {
+                    if (!errorExists) {
+                        $temp = $a1.temp;
+                    }
+                };
+
+indexaddexpr returns [String temp]
+                : (tiger_const addsubop) => tiger_const addsubop indexexpr {
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($addsubop.op) {
+                            case PLUS:
+                            generator.addAddition($tiger_const.text, $indexexpr.temp, $temp);
+                            break;
+
+                            case MINUS:
+                            generator.addSubtraction($tiger_const.text, $indexexpr.temp, $temp);
+                            break;
+
+                            default:
+                            break;
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
+                    }
+                } -> ^(addsubop tiger_const indexexpr)
+                | (value addsubop) => value addsubop indexexpr {
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($addsubop.op) {
+                            case PLUS:
+                            generator.addAddition($value.temp, $indexexpr.temp, $temp);
+                            break;
+
+                            case MINUS:
+                            generator.addSubtraction($value.temp, $indexexpr.temp, $temp);
+                            break;
+
+                            default:
+                            break;
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
+                    }
+                } -> ^(addsubop value indexexpr)
+                | (LPAREN indexexpr RPAREN addsubop) => LPAREN a1=indexexpr RPAREN addsubop a2=indexexpr {
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($addsubop.op) {
+                            case PLUS:
+                            generator.addAddition($a1.temp, $a2.temp, $temp);
+                            break;
+
+                            case MINUS:
+                            generator.addSubtraction($a1.temp, $a2.temp, $temp);
+                            break;
+
+                            default:
+                            break;
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
+                    }
+                } -> ^(addsubop indexexpr indexexpr);
+                
+
+indexmultexpr returns [String temp]
+                : (tiger_const multdivop) => tiger_const multdivop indexexpr {
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($multdivop.op) {
+                            case MULT:
+                            generator.addMultiplication($tiger_const.text, $indexexpr.temp, $temp);
+                            break;
+
+                            case DIV:
+                            generator.addDivision($tiger_const.text, $indexexpr.temp, $temp);
+                            break;
+
+                            default:
+                            break;
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try { 
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
+                    }
+                } -> ^(multdivop tiger_const indexexpr)
+                | tiger_const {
+                    if (!errorExists) {
+                        $temp = $tiger_const.text;
+                    }
+                }
+                | (value multdivop) => value multdivop indexexpr {
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($multdivop.op) {
+                            case MULT:
+                            generator.addMultiplication($value.temp, $indexexpr.temp, $temp);
+                            break;
+
+                            case DIV:
+                            generator.addDivision($value.temp, $indexexpr.temp, $temp);
+                            break;
+
+                            default:
+                            break;
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
+                    }
+                } -> ^(multdivop value indexexpr)
+                | value {
+                    if (!errorExists) {
+                        $temp = $value.temp;
+                    }
+                }
+                | (LPAREN indexexpr RPAREN multdivop) => LPAREN a1=indexexpr RPAREN multdivop a2=indexexpr {
+                    if (!errorExists) {
+                        $temp = generator.generateTemp();
+                        switch($multdivop.op) {
+                            case MULT:
+                            generator.addMultiplication($a1.temp, $a2.temp, $temp);
+                            break;
+
+                            case DIV:
+                            generator.addDivision($a1.temp, $a2.temp, $temp);
+                            break;
+
+                            default:
+                            break;
+
+                        }
+                        SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, symbolTable.getTigerInt(), PrimitiveType.TIGER_INT); 
+                        try {
+                            symbolTable.put(temp);
+                        } catch (NameSpaceException e) {
+                            System.out.println("That temp name is already taken");
+                        }
+                    }
+                } -> ^(multdivop indexexpr indexexpr);
 
 // Binary Operators
 // numerical
-// TODO
-addsubop returns [boolean isBool]
-                : (PLUS | MINUS) {
+addsubop returns [boolean isBool, Operator op]
+                : (PLUS {$op = Operator.PLUS;}
+                | MINUS {$op = Operator.MINUS;}
+                ) {
                     $isBool = false;
                 };
-multdivop returns [boolean isBool]      
-                : (MULT | DIV) {
+multdivop returns [boolean isBool, Operator op]      
+                : (MULT {$op = Operator.MULT;}
+                | DIV {$op = Operator.DIV;}
+                ) {
                     $isBool = false;
                 };
 // boolean
-//TODO
-compareop returns [boolean isBool]
-                : (EQ | NEQ | LESSER | LESSEREQ | GREATER | GREATEREQ) {
+compareop returns [boolean isBool, Operator op]
+                : (EQ {$op = Operator.EQ;}
+                | NEQ {$op = Operator.NEQ;}
+                | LESSER {$op = Operator.LT;}
+                | LESSEREQ {$op = Operator.LTE;}
+                | GREATER {$op = Operator.GT;}
+                | GREATEREQ {$op = Operator.GTE;}
+                ) {
                     $isBool = true;
                 };
-logicop returns [boolean isBool]
-                : (AND | OR) {
+logicop returns [boolean isBool, Operator op]
+                : (AND {$op = Operator.AND;}
+                | OR {$op = Operator.OR;}
+                ) {
                     $isBool = true;
                 };

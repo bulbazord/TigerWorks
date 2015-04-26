@@ -1,3 +1,4 @@
-Create Intermediate Representation through walking the AST generated
+IR:
+    - modify value to handle array values properly (load and store)
 
 Implement phase 3.

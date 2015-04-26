@@ -26,7 +26,7 @@ public class IRTranslator {
     private static final String CALL = "call, $func, $params";
     private static final String CALLR = "callr, $a, $func, $params";         // $a <- $func($params)
     private static final String ARRAY_STORE = "array_store, $arr, $i, $val"; //$arr[$i] <- $val
-    private static final String ARRAY_LOAD = "array_load, $a, $arr, $i";     // $a <- $arr[$i]
+    private static final String ARRAY_LOAD = "array_load, $b, $arr, $i";     // $a <- $arr[$i]
     private static final String LABEL = "$name: ";
 
 
@@ -120,14 +120,14 @@ public class IRTranslator {
         return template.replace("$a", a).replace("$func", func).replace("$params", list(params));
     }
 
-    public static String _array_store (String arr, int i, String val) {
+    public static String _array_store (String arr, String i, String val) {
         String template = ARRAY_STORE;
-        return template.replace("$arr", arr).replace("$i", "" + i).replace("$val", val);
+        return template.replace("$arr", arr).replace("$i", i).replace("$val", val);
     }
 
-    public static String _array_load (String a, String arr, int i) {
+    public static String _array_load (String a, String arr, String i) {
         String template = ARRAY_LOAD;
-        return template.replace("$a", a).replace("$arr", arr).replace("$i", "" + i);
+        return template.replace("$b", a).replace("$arr", arr).replace("$i", i);
     }
 
     public static String _label(String name) {

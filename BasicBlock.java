@@ -2,22 +2,23 @@ import java.util.ArrayList;
 
 public class BasicBlock {
 
-    ArrayList<String> instructions; // holds all the instructions
-    ArrayList<BasicBlock> next; // holds all basic blocks that can follow from this current one, can reference itself if loop.
+    private ArrayList<String> instructions; // holds all the instructions
+    private int firstLineNum;
 
 
-    public BasicBlock(String firstInstruction) {
-        instructions = new ArrayList<String>();
-        instructions.add(firstInstruction);
+    public BasicBlock(int start, ArrayList<Instruction> ir) {
+        instructions = ir;
+        this.start = firstLineNum;
     }
 
-    public void addInstruction(String i) {
-        instructions.add(i);
+    public ArrayList getInstructions() {
+        return instructions;
     }
 
-    // retrieves an instruction from the basic block.
-    public String getInstruction(int i) {
-        instructions.get(i);
+    public int getFirstLineNum() {
+        return firstLineNum;
     }
 
+
+    //@TODO Add more to the basic block as needed
 }

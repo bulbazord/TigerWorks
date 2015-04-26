@@ -16,8 +16,8 @@ import java.util.List;
 */
 public class ControlFlowGraph {
 
-    Set<String> branches;
-    Set<String> condBranches
+    Set<String> nonCondBranches;
+    Set<String> conditionalBranches;
     ArrayList<BasicBlock> basicBlocks;
     ArrayList<ExtendedBasicBlock> ebbs; //@TODO make class ExtenededBasicBlock
     Set<Edge> edges;
@@ -49,6 +49,27 @@ public class ControlFlowGraph {
         
         }
 
+    private class ExtendedBasicBlock {
+        private Arraylist<BasicBlock> blocks;
+
+        ExtendedBasicBlock() {
+            blocks = new ArrayList<BasicBlock>();
+
+        }
+
+        ExtendedBasicBlock(ArrayList<BasicBlock> bBlocks) {
+            blocks = bBlocks;
+        }
+
+        /*
+        * @return components of this EBB
+        */
+        public ArrayList<BasicBlock> getComponents() {
+            return blocks;
+        }
+        
+    }
+
 
     // set up CFG
     public ControlFlowGraph(ArrayList<Instruction> ir) {
@@ -56,28 +77,81 @@ public class ControlFlowGraph {
         ebbs = new ArrayList<ExtendedBasicBlock>();
         edges = new HashSet<>();
 
-        Map<Integer, String>  branches = new HashMap<>();
-        Set<Integer> condBranches = new HashSet<>();
+        Map<Integer, String>  nonCondBranches = new HashMap<Integer, String>();
+        Set<Integer> conditionalBranches = new HashSet<Integer>();
         Map<String,Integer> labels = new HashMap<>();
 
+        // sweep the IR code and handle all branches
         for (int i = 0; i < ir.size(); i++) { // i is the current line in the ir code
             Instruction inst = ir.get(i);
 
-            if(/*we have a label*/) {
+            if(inst.isLabel()) {
                 labels.put(inst.getLabelName(), new Integer(i));
-            } else if (/* not an empty line*/) {
-                if(){} //@TODO finish later
+            } else if (!inst.isEmpty() == 0) {
+                if(branches().contains(inst.getOp())) {
+                  //@TODO put it in our hashmap 
+                } else if(condBranches().contains(inst.getOp())) {
+                    //@TODO put it in our hashset
+                } else {
+                    // we aren't doing anything kek
+                }
             }
 
         }
+
+
+        Set<Integer> branchDestinations = new HashSet<Integer>();
+        // were gonna populate a hashset for branch target addresses
         
+
+
+        // sweep the IR code again
+        // were going to build our basic blocks here
+
+        int start = 0;
+        for(int i = 0; i < ir.size(); i++) {
+            Integer intobj = new Integer(i);
+            if(branchDestinations.contains(intobj)) {
+                //is it a destination of a branch? Lets start a new basic block
+            } else if (branches().containsKey(intobj)) {
+                //lets make a basic block and put it into our ArrayList
+            } else if (i == irCode.size()--) {
+                // congrats! were at the end of the program, lets put the rest into a basic block
+            } else {
+                // no need to make a new block yet, so don't do anything
+            }
+        }
+
+
+
+        // Here we populate our edge list of the CFG
+
+
+
+
+        // then we have to make our extended basic blocks at the end
+
+        // WOOT were done with making the CFG!!!!!
+    }
+
+    public Boolean isBranch(Instruction inst) {
+        if(inst.isLabel() || inst.isEmpty()) {
+            return false; // its an empty line or a label
+        } else {
+            if(branches.contains(inst.getOp) || condBranches.contains(inst.getOp)) {
+                return true; // will branch
+            }
+            return false; 
+        }
     }
 
     public Set<String> branches() {
         branches = new HashSet<>();
         branches.add("goto");
+        branches.add("call");
+        branches.add("callr");
+        branches.add("return");
         return branches;
-        // would add more for function calls but we aren't implementing
 
     }
 

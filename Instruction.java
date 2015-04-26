@@ -27,9 +27,30 @@ public class Instruction {
         isLabel = true;
     }
 
+    /*
+    * typical assign statements are of this size
+    */
+    public Instruction(String oper, String, dst, String src) {
+        operationAndParams = new ArrayList<String>();
+        operationAndParams.add(oper);
+        operationAndParams.add(dst);
+        operationAndParams.add(src);
+    }
 
-    //@TODO add more instruction constructors as needed
 
+    /*
+    * typical goto statement
+    */
+    public Instruction(String oper, String destAddr) {
+        operationAndParams = new ArrayList<String>();
+        operationAndParams.add(oper);
+        operationAndParams.add(destAddr);
+    }
+
+
+    /*
+    * binary operations
+    */
     public Instruction(String oper, String dstReg, String srcOne, String srcTwo) {
         operationAndParams = new ArrayList<String>();
         operationAndParams.add(oper);
@@ -38,12 +59,39 @@ public class Instruction {
         operationAndParams.add(srcTwo);
     }
 
+    /*
+    * function call with no retval
+    * op is "call"
+    */
+    public Instruction(String oper, String funcName, ArrayList<String> paramList) {
+        operationAndParams = new ArrayList<String>();
+        operationAndParams.add(oper);
+        operationAndParams.add(funcName);
+        for (int i = 0; i <  paramList.size(); i++) {
+            operationAndParams.add(paramList.get(i))
+        }
+
+    /*
+    * function call with returns
+    * op is "callr"
+    */
+    public Instruction(String oper, String dstReg, String funcName, ArrayList<String> paramList) {
+        operationAndParams = new ArrayList<String>();
+        operationAndParams.add(oper);
+        operationAndParams.add(dstReg);
+        operationAndParams.add(funcName);
+        for (int i = 0; i < paramList.size(); i++) {
+            operationAndParams.add(paramList.get(i));
+        }
+    }
+
+
 
 
 
 
     public boolean isEmpty() {
-        if(operationAndParams == null && !isLabel) {
+        if(operationAndParams == 0 && !isLabel) {
             return true;
         } else {
             return false;
@@ -74,7 +122,7 @@ public class Instruction {
         return operationAndParams.get(2);
     }
 
-    /* @ return right source register in instruction if present, empty string otherwise.
+    /*@ return right source register in instruction if present, empty string otherwise.
     *  anatomy of instruction
     *  [opcode | dstReg | src1 | (src2)? <--- ]
     */
@@ -84,6 +132,10 @@ public class Instruction {
         } else {
             return "";
         }
+    }
+
+    public ArrayList<String> getInstruction() {
+        return operationAndParam;
     }
 
     /*

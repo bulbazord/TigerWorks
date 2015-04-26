@@ -10,7 +10,7 @@ import java.util.List;
 public class CodeGenerator {
     private List<IRInstruction> ir = new LinkedList<IRInstruction>();
     private List<String> mips = new LinkedList<String>();
-    private static final String DEFAULT_DESTINATION = "tiger.as";
+    private static final String DEFAULT_DESTINATION = "tiger.asm";
 
     public CodeGenerator (String filename) {
         this(filename, DEFAULT_DESTINATION);
@@ -55,9 +55,12 @@ public class CodeGenerator {
     }
 
     private void IRtoMIPs () {
+        mips.add(".data");
+        mips.add(".text");
         for (IRInstruction instruction : ir) {
             List<String> mipsInstructions = MIPSTranslator.IRtoMIPS(instruction);
             mips.addAll(mipsInstructions);
         }
+        mips.add("jr $ra");
     }
 }

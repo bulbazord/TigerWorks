@@ -7,9 +7,11 @@ import java.util.List;
  * A class to represent one line of an IR expression.
  */
 public class IRInstruction {
+    private String string;
     private String type;
     private List<String> parameters = new ArrayList<String>();
     public IRInstruction (String instruction) {
+        string = instruction;
         String[] params = instruction.split(",");
 
         if (params.length > 0) {
@@ -26,5 +28,9 @@ public class IRInstruction {
 
     public String getType () {
         return type;
+    }
+
+    public String toString () {
+        return string;
     }
 }

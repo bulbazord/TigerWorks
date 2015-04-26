@@ -7,7 +7,7 @@ import java.util.List;
  * Represents a MIPS Instruction
  */
 public class MIPSTranslator {
-    private static final String ADD = "add $d, $s, $t";
+    private static final String ADD = "add $d, $s, $t"; // $d = $s + $t
     private static final String ADDI = "addi $d, $s, $imm";
     private static final String AND = "and $d, $s, $t";
     private static final String ANDI = "and $d, $s, $imm";
@@ -20,11 +20,128 @@ public class MIPSTranslator {
     private static final String DIV = "div $s, $t";
     private static final String J = "j $target"; // jump
     private static final String JR = "jr $target"; // jump to register
-
+    
     public static List<String> IRtoMIPS (IRInstruction ir) {
         List<String> result = new LinkedList<String>();
+        List<String> params = ir.getParams();
+        if (ir.getType().equals("assign")) {
+            // How to handle assign
+            if (params.size() > 2) {
+                // This is array assign: assign, $var, $size, $val,
+            } else {
+                // Normal variable assign: assign, $var, $val,
+            }
+        } else if (ir.getType().equals("array_load")) {
+            String a = params.get(0);
+            String arr = params.get(1);
+            String i = params.get(2);
+        } else if (ir.getType().equals("array_store")) {
+            String arr = params.get(0);
+            String i = params.get(1);
+            String val = params.get(2);
+        } else if (ir.getType().equals("call")) {
+            String func = params.get(0);
+            // Params are everything else in the list
+        } else if (ir.getType().equals("return")) {
+            String val = params.get(0);
+        } else if (ir.getType().equals("brleq")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String label = params.get(2);
+        } else if (ir.getType().equals("brgeq")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String label = params.get(2);
+        } else if (ir.getType().equals("brgt")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String label = params.get(2);
+        } else if (ir.getType().equals("brlt")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String label = params.get(2);
+        } else if (ir.getType().equals("brneq")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String label = params.get(2);
+        } else if (ir.getType().equals("breq")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String label = params.get(2);
+        } else if (ir.getType().equals("goto")) {
+            String label = params.get(0);
 
+            result.add(_j(label));
+        } else if (ir.getType().equals("or")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String c = params.get(2);
 
+            try {
+                Integer.parseInt(b);
+                //result.add(_addi(c, a, b));
+            } catch (NumberFormatException e) {
+                // result.add(_add(c, a, b));
+            }
+        } else if (ir.getType().equals("and")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String c = params.get(2);
+
+            try {
+                Integer.parseInt(b);
+                //result.add(_addi(c, a, b));
+            } catch (NumberFormatException e) {
+                // result.add(_add(c, a, b));
+            }
+        } else if (ir.getType().equals("sub")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String c = params.get(2);
+
+            try {
+                Integer.parseInt(b);
+                //result.add(_addi(c, a, b));
+            } catch (NumberFormatException e) {
+                // result.add(_add(c, a, b));
+            }
+        } else if (ir.getType().equals("div")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String c = params.get(2);
+
+            try {
+                Integer.parseInt(b);
+                //result.add(_addi(c, a, b));
+            } catch (NumberFormatException e) {
+                // result.add(_add(c, a, b));
+            }
+        } else if (ir.getType().equals("mult")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String c = params.get(2);
+
+            try {
+                Integer.parseInt(b);
+                //result.add(_addi(c, a, b));
+            } catch (NumberFormatException e) {
+                // result.add(_add(c, a, b));
+            }
+        } else if (ir.getType().equals("add") || ir.getType().equals("sub")) {
+            String a = params.get(0);
+            String b = params.get(1);
+            String c = params.get(2);
+
+            try {
+                Integer.parseInt(b);
+                result.add(_addi(c, a, b));
+            } catch (NumberFormatException e) {
+                result.add(_add(c, a, b));
+            }
+        } else if (ir.getType().equals("label")) {
+            // Labels are the same in IR and MIPS
+            result.add(ir.toString());
+        }
         return result;
     }
 

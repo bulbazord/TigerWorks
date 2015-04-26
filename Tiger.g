@@ -782,7 +782,7 @@ vardecl         : (VAR idlist COLON typeid ASSIGN)
                             String idListRaw = $idlist.text.replaceAll("\\s", "");;
                             String[] idList = idListRaw.split(",");
                             for (String var : idList) {
-                                generator.addAssignment(var, $tiger_const.text);
+                                generator.addAssignment(var + "#" + current_function, $tiger_const.text);
                             }
                         } else {
                             String idListRaw = $idlist.text.replaceAll("\\s", "");;
@@ -796,7 +796,7 @@ vardecl         : (VAR idlist COLON typeid ASSIGN)
                                             * ((TypeTableEntry)type).getHeight();
                             }
                             for (String var : idList) {
-                                generator.addAssignment(var, arraySize, $tiger_const.text);
+                                generator.addAssignment(var + "#" + current_function, arraySize, $tiger_const.text);
                             }
                         }
                     }
@@ -973,9 +973,9 @@ assignrule      : (value ASSIGN funccall)
                     //IR Generation
                     if (!errorExists) {
                         if ($value.arr) {
-                            generator.addArrayStore($value.name, $value.index, $expr.temp);
+                            generator.addArrayStore($value.name + "#" + current_function, $value.index, $expr.temp);
                         } else {
-                            generator.addAssignment($value.temp, $expr.temp);
+                            generator.addAssignment($value.temp + "#" + current_function, $expr.temp);
                         }
                     }
                 }
@@ -1148,11 +1148,11 @@ forloop         : FOR ID ASSIGN a1=indexexpr {
                 } TO a2=indexexpr {
                     if (!errorExists) {
                         generator.addLabel(thenLabel);
-                        generator.addBREQ($ID.text, $a2.temp, doneLabel);
+                        generator.addBREQ($ID.text + "#" + current_function, $a2.temp, doneLabel);
                     }
                 } DO statseq ENDDO SEMI {
                     if (!errorExists) {
-                        generator.addAddition($ID.text, ""+1, $ID.text);
+                        generator.addAddition($ID.text + "#" + current_function, ""+1, $ID.text);
                         generator.addGoto(thenLabel);
                         generator.addLabel(doneLabel);
                         doneLabel = labelStack.pop();
@@ -1591,7 +1591,7 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                         generator.addAddition(temp1, $a2.temp, temp2);
                         $index = temp2;
                         if (arrAssign) {
-                            generator.addArrayLoad($temp, $ID.text, temp2);
+                            generator.addArrayLoad($temp, $ID.text + "#" + current_function, temp2);
                         }
                         SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
                         try {
@@ -1627,7 +1627,7 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                         $arr = true;
                         $index = $indexexpr.temp;
                         if (arrAssign) {
-                            generator.addArrayLoad($temp, $ID.text, $index);
+                            generator.addArrayLoad($temp, $ID.text + "#" + current_function, $index);
                         }
                         SymbolTableEntry temp = new VarTableEntry(temp_scope, $temp, $typeChecker.getType(), ((TypeTableEntry)$typeChecker.getType()).getTrueType());
                         try {
@@ -1652,7 +1652,7 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                     $name = $ID.text;
                     // IR Generator
                     if (!errorExists) {
-                        $temp = $ID.text;
+                        $temp = $ID.text + "#" + current_function;
                     }
                 } -> ^(VALUE ID);
 

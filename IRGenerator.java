@@ -19,6 +19,10 @@ public class IRGenerator {
         return "t" + tempVarCount++;
     }
 
+    public int getTempCount() {
+        return tempVarCount++;
+    }
+
     /*public boolean add(String s) {
         return list.add(s);
     }*/

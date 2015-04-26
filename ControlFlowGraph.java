@@ -44,11 +44,26 @@ public class ControlFlowGraph {
 
 
     // set up CFG
-    public ControlFlowGraph(BasicBlock[] b) {
+    public ControlFlowGraph(ArrayList<Instruction> ir) {
         basicBlocks = new ArrayList<BasicBlock();
         ebbs = new ArrayList<ExtendedBasicBlock>();
         edges = new HashSet<>();
 
-        Map<Integer, String> 
+        Map<Integer, String>  branches = new HashMap<>();
+        Set<Integer> condBranches = new HashSet<>();
+        Map<String,Integer> labels = new HashMap<>();
+
+        for (int i = 0; i < ir.size(); i++) { // i is the current line in the ir code
+            Instruction inst = ir.get(i);
+
+            if(/*we have a label*/) {
+                labels.put(inst.getLabelName(), new Integer(i));
+            } else if (/* not an empty line*/) {
+                if(){} //@TODO finish later
+            }
+
+        }
+
+        for(int i = 0;)
         
     }

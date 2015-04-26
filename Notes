@@ -1,0 +1,41 @@
+MIPS instruction format.
+32 bit instructions
+
+Register use Scheme
+num -> name
+$0 -> $zero    (constant 0)
+$1 -> $at      (assembler temp)
+$2-$3 -> $v0-$v1 (values for returns and expression evals)
+$4-$7 -> $a0-$a3 (function args)
+$8-$15 ->$t0-$t7 (temporaries)
+$16-$23->$s0-$s7 (saved temps)
+$24-$25->$t8-$t9 (more temps)
+$26-$27->$k0-$k1 (reserved for OS kernal)
+$28 -> $gp       (global pointer)
+$29 -> $sp       (stack pointer)
+$30 -> $fp       (frame pointer)
+$31 -> $ra       (return address)
+
+
+basically we gotta do a naive approach to our register allocation, load everything it uses as live at the start of each basic block and perform stores at the end of each, this will maximize register spilling, but it will allow us to have working code.
+
+Generate the Control flow graph by populating it with basic blocks, then traverse the graph and create extended basic blocks using the algorithm provided in the PDF, then we have to perform the actual register allocation on these basic blocks [start with loads, and then end with stores because there is no liveness analysis].
+
+we can perform register allocation by the graph coloring method we learned in class
+
+
+
+
+
+
+now that that is done, we can produce correct IR.
+
+Now we need to create a mapping from our IR code to MIPS code to be run on the simulator.
+
+- Class Instruction -> Subclasses Rtype, Itype, Jtype (inherit 6 bit opcode)Rtype -> opcode[6 bits] 
+
+Instruction format :
+Rtype  [opcode(6 bits) | rs(5 bits) | rt(5 bits) | rd(5 bits) | shift amount(5 bits) | funct (6 bits)]
+Itype  [opcode(6 bits) | rs(5 bits) | rt(5 bits) | immediate (16 bits)]
+Jtype  [opcode(6 bits) | address (26 bits)]
+

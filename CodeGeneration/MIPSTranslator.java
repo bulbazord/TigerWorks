@@ -11,6 +11,8 @@ public class MIPSTranslator {
     private static final String ADDI = "addi $d, $s, $imm";
     private static final String AND = "and $d, $s, $t";
     private static final String ANDI = "and $d, $s, $imm";
+    private static final String OR = "or $d, $s, $t";
+    private static final String ORI = "ori $d, $s, $t";
     private static final String BEQ = "beq $s, $t, $offset";
     private static final String BGEZ = "bgez $s, $offset"; // Branch on greater than or equal to zero
     private static final String BGTZ = "bgtz $s, $offset"; // Branch on greater than zero
@@ -18,130 +20,156 @@ public class MIPSTranslator {
     private static final String BLTZ = "bltz $s, $offset"; // Branch on less than zero
     private static final String BNE = "bne $s, $offset"; // Branch on not equal
     private static final String DIV = "div $s, $t";
+    private static final String MULT = "mult $s, $t";
     private static final String J = "j $target"; // jump
     private static final String JR = "jr $target"; // jump to register
-    
+    private static final String LW = "lw $t, offset($s)"; //load byte
+    private static final String SW = "sw $t, offset($s)"; // MEM[$s + offset] = $t
+
+
     public static List<String> IRtoMIPS (IRInstruction ir) {
         List<String> result = new LinkedList<String>();
         List<String> params = ir.getParams();
-        if (ir.getType().equals("assign")) {
-            // How to handle assign
-            if (params.size() > 2) {
-                // This is array assign: assign, $var, $size, $val,
-            } else {
-                // Normal variable assign: assign, $var, $val,
-            }
-        } else if (ir.getType().equals("array_load")) {
-            String a = params.get(0);
-            String arr = params.get(1);
-            String i = params.get(2);
-        } else if (ir.getType().equals("array_store")) {
-            String arr = params.get(0);
-            String i = params.get(1);
-            String val = params.get(2);
-        } else if (ir.getType().equals("call")) {
-            String func = params.get(0);
-            // Params are everything else in the list
-        } else if (ir.getType().equals("return")) {
-            String val = params.get(0);
-        } else if (ir.getType().equals("brleq")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String label = params.get(2);
-        } else if (ir.getType().equals("brgeq")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String label = params.get(2);
-        } else if (ir.getType().equals("brgt")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String label = params.get(2);
-        } else if (ir.getType().equals("brlt")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String label = params.get(2);
-        } else if (ir.getType().equals("brneq")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String label = params.get(2);
-        } else if (ir.getType().equals("breq")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String label = params.get(2);
-        } else if (ir.getType().equals("goto")) {
-            String label = params.get(0);
+        String a, b, c, label, i, val, arr;
+        switch (ir.getType()) {
+            case "load": // Loads a into val
+                a = params.get(0);
+                val = params.get(1);
+                break;
+            case "store": // Stores val into a
+                val = params.get(0);
+                a = params.get(1);
+                break;
+            case "assign":
+                // How to handle assign
+                if (params.size() > 2) {
+                    // This is array assign: assign, $var, $size, $val,
+                } else {
+                    // Normal variable assign: assign, $var, $val,
+                }
+                break;
+            case "array_load":
+                a = params.get(0);
+                arr = params.get(1);
+                i = params.get(2);
+                break;
+            case "array_store":
+                arr = params.get(0);
+                i = params.get(1);
+                val = params.get(2);
+                break;
+            case "call":
+                // Not doing this
+                break;
+            case "return":
+                val = params.get(0);
+                break;
+            case "brleq":
+                a = params.get(0);
+                b = params.get(1);
+                label = params.get(2);
+                break;
+            case "brgeq":
+                a = params.get(0);
+                b = params.get(1);
+                label = params.get(2);
+                break;
+            case "brgt":
+                a = params.get(0);
+                b = params.get(1);
+                label = params.get(2);
+                break;
+            case "brlt":
+                a = params.get(0);
+                b = params.get(1);
+                label = params.get(2);
+                break;
+            case "brneq":
+                a = params.get(0);
+                b = params.get(1);
+                label = params.get(2);
+                break;
+            case "breq":
+                a = params.get(0);
+                b = params.get(1);
+                label = params.get(2);
+                break;
+            case "goto":
+                label = params.get(0);
+                result.add(_j(label));
+                break;
+            case "or":
+                a = params.get(0);
+                b = params.get(1);
+                c = params.get(2);
+                try {
+                    Integer.parseInt(b);
+                    //result.add(_addi(c, a, b));
+                } catch (NumberFormatException e) {
+                    // result.add(_add(c, a, b));
+                }
+                break;
+            case "and":
+                a = params.get(0);
+                b = params.get(1);
+                c = params.get(2);
+                try {
+                    Integer.parseInt(b);
+                    //result.add(_addi(c, a, b));
+                } catch (NumberFormatException e) {
+                    // result.add(_add(c, a, b));
+                }
+                break;
+            case "sub":
+                a = params.get(0);
+                b = params.get(1);
+                c = params.get(2);
+                try {
+                    Integer.parseInt(b);
+                    //result.add(_addi(c, a, b));
+                } catch (NumberFormatException e) {
+                    // result.add(_add(c, a, b));
+                }
+                break;
+            case "div":
+                a = params.get(0);
+                b = params.get(1);
+                c = params.get(2);
+                try {
+                    Integer.parseInt(b);
+                    //result.add(_addi(c, a, b));
+                } catch (NumberFormatException e) {
+                    // result.add(_add(c, a, b));
+                }
+                break;
+            case "mult":
+                a = params.get(0);
+                b = params.get(1);
+                c = params.get(2);
+                try {
+                    Integer.parseInt(b);
+                    //result.add(_addi(c, a, b));
+                } catch (NumberFormatException e) {
+                    // result.add(_add(c, a, b));
+                }
+                break;
+            case "add":
+                a = params.get(0);
+                b = params.get(1);
+                c = params.get(2);
 
-            result.add(_j(label));
-        } else if (ir.getType().equals("or")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String c = params.get(2);
-
-            try {
-                Integer.parseInt(b);
-                //result.add(_addi(c, a, b));
-            } catch (NumberFormatException e) {
-                // result.add(_add(c, a, b));
-            }
-        } else if (ir.getType().equals("and")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String c = params.get(2);
-
-            try {
-                Integer.parseInt(b);
-                //result.add(_addi(c, a, b));
-            } catch (NumberFormatException e) {
-                // result.add(_add(c, a, b));
-            }
-        } else if (ir.getType().equals("sub")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String c = params.get(2);
-
-            try {
-                Integer.parseInt(b);
-                //result.add(_addi(c, a, b));
-            } catch (NumberFormatException e) {
-                // result.add(_add(c, a, b));
-            }
-        } else if (ir.getType().equals("div")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String c = params.get(2);
-
-            try {
-                Integer.parseInt(b);
-                //result.add(_addi(c, a, b));
-            } catch (NumberFormatException e) {
-                // result.add(_add(c, a, b));
-            }
-        } else if (ir.getType().equals("mult")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String c = params.get(2);
-
-            try {
-                Integer.parseInt(b);
-                //result.add(_addi(c, a, b));
-            } catch (NumberFormatException e) {
-                // result.add(_add(c, a, b));
-            }
-        } else if (ir.getType().equals("add") || ir.getType().equals("sub")) {
-            String a = params.get(0);
-            String b = params.get(1);
-            String c = params.get(2);
-
-            try {
-                Integer.parseInt(b);
-                result.add(_addi(c, a, b));
-            } catch (NumberFormatException e) {
-                result.add(_add(c, a, b));
-            }
-        } else if (ir.getType().equals("label")) {
-            // Labels are the same in IR and MIPS
-            result.add(ir.toString());
+                try {
+                    Integer.parseInt(b);
+                    result.add(_addi(c, a, b));
+                } catch (NumberFormatException e) {
+                    result.add(_add(c, a, b));
+                }
+                break;
+            case "label":
+                result.add(ir.toString());
+                break;
         }
+
         return result;
     }
 

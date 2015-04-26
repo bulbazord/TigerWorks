@@ -85,14 +85,13 @@ public class Instruction {
         }
     }
 
-    //@TODO function support (not function call)
 
 
 
 
 
     public boolean isEmpty() {
-        if(operationAndParams == null && !isLabel) {
+        if(operationAndParams == 0 && !isLabel) {
             return true;
         } else {
             return false;
@@ -133,6 +132,10 @@ public class Instruction {
         } else {
             return "";
         }
+    }
+
+    public ArrayList<String> getInstruction() {
+        return operationAndParam;
     }
 
     /*

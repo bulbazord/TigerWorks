@@ -88,14 +88,13 @@ public class ControlFlowGraph {
                 labels.put(inst.getName(), new Integer(i));
             } else if (!inst.isEmpty()) {
                 if(branches().contains(inst.getOp())) {
-                  //@TODO put it in our hashmap
+                    target = getTarget(inst);
+                    nonCondBranches.put(new Integer(i), target);
                 } else if(condBranches().contains(inst.getOp())) {
-                    //@TODO put it in our hashset
-                } else {
-                    // we aren't doing anything kek
+                    target = getTarget(inst);
+                    conditionalBranches.add(new Integer(i));
                 }
             }
-
         }
 
 
@@ -169,8 +168,10 @@ public class ControlFlowGraph {
     public String getTarget(Instruction inst) {
         if(inst.getOp() == "return") {
             return null;
-        } else if(inst.getOp() == "call" || inst.getOp() == "callr") {
-            return null;
+        } else if(inst.getOp() == "call") {
+            return inst.getParam(1);
+        } else if (inst.getOp() == "callr") {
+            return inst.getParam(2);
         } else if(inst.getOp() == "goto") {
             return inst.getDstReg();
         } else {

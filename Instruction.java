@@ -153,9 +153,7 @@ public class Instruction {
         return "";
     }
 
-    
-
-
-
-    
+    public String getParam(int i) {
+        return operationAndParams.get(i);
+    }
 }

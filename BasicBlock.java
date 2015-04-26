@@ -23,4 +23,8 @@ public class BasicBlock {
 
 
     //@TODO Add more to the basic block as needed
+
+    public void insertInstruction(Instruction instr) {
+        instructions.add(instr);
+    }
 }

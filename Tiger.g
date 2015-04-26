@@ -461,6 +461,7 @@ tigerprogram returns [SymbolTable symbolTable, boolean errorExists]
         $symbolTable = symbolTable;
         $errorExists = errorExists;
         if (!errorExists) {
+            generator.addLabel("#END");
             generator.writeToFile(DEFAULT_FILENAME);
         }
     }
@@ -975,7 +976,8 @@ assignrule      : (value ASSIGN funccall)
                         if ($value.arr) {
                             generator.addArrayStore($value.name + "#" + current_function, $value.index, $expr.temp);
                         } else {
-                            generator.addAssignment($value.temp + "#" + current_function, $expr.temp);
+                            //JUMP
+                            generator.addAssignment($value.temp, $expr.temp);
                         }
                     }
                 }
@@ -1139,7 +1141,7 @@ whileloop       : WHILE  {
 //TODO
 forloop         : FOR ID ASSIGN a1=indexexpr {
                     if (!errorExists) {
-                        generator.addAssignment($ID.text, $a1.temp);
+                        generator.addAssignment($ID.text + "#" + current_function, $a1.temp);
                         labelStack.push(thenLabel);
                         labelStack.push(doneLabel);
                         thenLabel = generator.generateLabel();
@@ -1152,7 +1154,7 @@ forloop         : FOR ID ASSIGN a1=indexexpr {
                     }
                 } DO statseq ENDDO SEMI {
                     if (!errorExists) {
-                        generator.addAddition($ID.text + "#" + current_function, ""+1, $ID.text);
+                        generator.addAddition($ID.text + "#" + current_function, ""+1, $ID.text + "#" + current_function);
                         generator.addGoto(thenLabel);
                         generator.addLabel(doneLabel);
                         doneLabel = labelStack.pop();

@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import java.util.ArrayList;
+
 public class TigerCompiler {
     public static void main(String[] args) {
         if (args.length != 1) {
@@ -55,16 +57,11 @@ public class TigerCompiler {
                 // Get symbol table from parser
                 SymbolTable symbolTable = ret.symbolTable;
                 boolean errorsExist = ret.errorExists;
-                /*if (!errorsExist) {
-                    // Try to walk the tree
-                    CommonTreeNodeStream ctns = new CommonTreeNodeStream(ast);
-                    try {
-                        TigerTreeWalk traversal = new TigerTreeWalk(ctns, symbolTable);
-                        traversal.walk();
-                    } catch (Exception e) {
-                        System.out.println("Semantic error occurred! " + e.getMessage());
-                    }
-                }*/
+                if (!errorsExist) {
+                    NaiveRegisterAllocator nra = new NaiveRegisterAllocator();
+                    nra.allocate("ir.tigir");
+                    nra.write();
+                }
             }
         } catch (RecognitionException re) {
             System.out.println("A recognition exception has been thrown");

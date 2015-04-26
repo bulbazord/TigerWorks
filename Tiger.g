@@ -79,6 +79,7 @@ tokens {
     //private Stack<String> endLabelStack = new Stack<String>();
 
     private boolean funcAssign;
+    private boolean arrAssign;
     private String tempValue;
 
     public SemanticObject evaluateType(SemanticObject a1, SemanticObject a2, String binaryOp, int lineNumber) {
@@ -771,10 +772,28 @@ vardecl         : (VAR idlist COLON typeid ASSIGN)
                         }
                     }
                     // IR Generation
-                    String idListRaw = $idlist.text.replaceAll("\\s", "");;
-                    String[] idList = idListRaw.split(",");
-                    for (String var : idList) {
-                        generator.addAssignment(var, $tiger_const.text);
+                    if (((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT
+                        || ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT)
+                    {
+                        String idListRaw = $idlist.text.replaceAll("\\s", "");;
+                        String[] idList = idListRaw.split(",");
+                        for (String var : idList) {
+                            generator.addAssignment(var, $tiger_const.text);
+                        }
+                    } else {
+                        String idListRaw = $idlist.text.replaceAll("\\s", "");;
+                        String[] idList = idListRaw.split(",");
+                        int arraySize = 0;
+                        if (((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR
+                            || ((TypeTableEntry)type).getTrueType() == PrimitiveType.TIGER_INT_ARR) {
+                            arraySize = ((TypeTableEntry)type).getLength();
+                        } else {
+                            arraySize = ((TypeTableEntry)type).getLength() 
+                                            * ((TypeTableEntry)type).getHeight();
+                        }
+                        for (String var : idList) {
+                            generator.addAssignment(var, arraySize, $tiger_const.text);
+                        }
                     }
                 } -> ^(VARDECL idlist typeid ASSIGN tiger_const)
                 | VAR idlist COLON typeid SEMI {
@@ -917,10 +936,14 @@ assignrule      : (value ASSIGN funccall)
                         }
                     }
                     // IR Generation
+
                 }
                 -> ^(ASSIGN value funccall)
                 | (value ASSIGN expr)
-                => value ASSIGN expr SEMI {
+                => value ASSIGN {
+                    arrAssign = true;
+                } expr SEMI {
+                    arrAssign = false;
                     SymbolTableEntry variable = symbolTable.get(current_scope, $value.name, false);
                     if (variable == null || variable instanceof TypeTableEntry) {
                         errorExists = true;
@@ -943,7 +966,12 @@ assignrule      : (value ASSIGN funccall)
                         }
                     }
                     //IR Generation
-                    generator.addAssignment($value.temp, $expr.temp);
+                    //JUMP
+                    if ($value.arr) {
+                        generator.addArrayStore($value.name, $value.index, $expr.temp);
+                    } else {
+                        generator.addAssignment($value.temp, $expr.temp);
+                    }
                 }
                 -> ^(ASSIGN value expr);
 
@@ -1420,7 +1448,7 @@ tiger_const returns [SemanticObject typeChecker, boolean isBool]
 
 
 //TODO
-value returns [String name, SemanticObject typeChecker, boolean isBool, String temp]
+value returns [String name, SemanticObject typeChecker, boolean isBool, String temp, boolean arr, String index]
                 : (ID LBRACK indexexpr RBRACK LBRACK)
                 => ID LBRACK a1=indexexpr RBRACK LBRACK a2=indexexpr RBRACK {
                     SymbolTableEntry variable = symbolTable.get(current_scope, $ID.text, false);
@@ -1430,27 +1458,9 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                         System.out.println($ID.text + " was either never declared or is declared as a type in the current scope.");
                         $typeChecker = null;
                     } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_INT_2D_ARR) {
-                        int first = Integer.parseInt($a1.text);
-                        int second = Integer.parseInt($a2.text);
-                        if ((first > ((VarTableEntry)variable).getType().getLength() || first < 0) ||
-                            (second > ((VarTableEntry)variable).getType().getHeight() || second < 0)) {
-                            System.out.print("Line " + $ID.getLine() + ": ");
-                            System.out.println("Out of bounds index ");
-                            $typeChecker = null;
-                        } else {
-                            $typeChecker = new SemanticObject(false, symbolTable.getTigerInt(), $value.text);
-                        }
+                        $typeChecker = new SemanticObject(false, symbolTable.getTigerInt(), $value.text);
                     } else if ((((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_FIXEDPT_2D_ARR)) {
-                        int first = Integer.parseInt($a1.text);
-                        int second = Integer.parseInt($a2.text);
-                        if ((first > ((VarTableEntry)variable).getType().getLength() || first < 0) ||
-                            (second > ((VarTableEntry)variable).getType().getHeight() || second < 0)) {
-                            System.out.print("Line " + $ID.getLine() + ": ");
-                            System.out.println("Out of bounds index ");
-                            $typeChecker = null;
-                        } else {
-                            $typeChecker = new SemanticObject(false, symbolTable.getTigerFixedpt(), $value.text);
-                        }
+                        $typeChecker = new SemanticObject(false, symbolTable.getTigerFixedpt(), $value.text);
                     } else {
                         errorExists = true;
                         System.out.print("Line " + $ID.getLine() + ": ");
@@ -1460,7 +1470,16 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                     $isBool = false;
                     $name = $ID.text;
                     //IR Generation
-                    $temp = $ID.text;
+                    $temp = generator.generateTemp();
+                    $arr = true;
+                    String temp1 = generator.generateTemp();
+                    String temp2 = generator.generateTemp();
+                    generator.addMultiplication($a1.temp, "" + ((VarTableEntry)variable).getType().getLength(), temp1);
+                    generator.addAddition(temp1, $a2.temp, temp2);
+                    $index = temp2;
+                    if (arrAssign) {
+                        generator.addArrayLoad($temp, $ID.text, temp2);
+                    }
                 } -> ^(VALUE ID indexexpr indexexpr)
                 | (ID LBRACK)
                 => ID LBRACK indexexpr RBRACK {
@@ -1471,23 +1490,9 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                         System.out.println($ID.text + " was either never declared or is declared as a type in the current scope.");
                         $typeChecker = null;
                     } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_INT_ARR) { 
-                        int first = Integer.parseInt($indexexpr.text);
-                        if (first > ((VarTableEntry)variable).getType().getLength() || first < 0) {
-                            System.out.print("Line " + $ID.getLine() + ": ");
-                            System.out.println("Out of bounds index ");
-                            $typeChecker = null;
-                        } else {
-                            $typeChecker = new SemanticObject(false, symbolTable.getTigerInt(), $value.text);
-                        }
+                        $typeChecker = new SemanticObject(false, symbolTable.getTigerInt(), $value.text);
                     } else if (((VarTableEntry)variable).getTrueType() == PrimitiveType.TIGER_FIXEDPT_ARR) { 
-                        int first = Integer.parseInt($indexexpr.text);
-                        if (first > ((VarTableEntry)variable).getType().getLength() || first < 0) {
-                            System.out.print("Line " + $ID.getLine() + ": ");
-                            System.out.println("Out of bounds index ");
-                            $typeChecker = null;
-                        } else {
-                            $typeChecker = new SemanticObject(false, symbolTable.getTigerFixedpt(), $value.text);
-                        }
+                        $typeChecker = new SemanticObject(false, symbolTable.getTigerFixedpt(), $value.text);
                     } else {
                         errorExists = true;
                         System.out.print("Line " + $ID.getLine() + ": ");
@@ -1497,7 +1502,12 @@ value returns [String name, SemanticObject typeChecker, boolean isBool, String t
                     $isBool = false;
                     $name = $ID.text;
                     //IR Generator
-                    $temp = $ID.text;
+                    $temp = generator.generateTemp();
+                    $arr = true;
+                    $index = $indexexpr.temp;
+                    if (arrAssign) {
+                        generator.addArrayLoad($temp, $ID.text, $index);
+                    }
                 } -> ^(VALUE ID indexexpr)
                 | ID {
                     SymbolTableEntry variable = symbolTable.get(current_scope, $ID.text, false);

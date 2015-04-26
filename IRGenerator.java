@@ -95,12 +95,12 @@ public class IRGenerator {
         return list.add(IRTranslator._callr(a, func, params));
     }
 
-    public boolean addArrayStore(String arr, int i, String val) {
-        return list.add(IRTranslator._array_store(arr, i, val));
+    public boolean addArrayStore(String arr, String index, String val) {
+        return list.add(IRTranslator._array_store(arr, index, val));
     }
 
-    public boolean addArrayLoad(String a, String arr, int i) {
-        return list.add(IRTranslator._array_load(a, arr, i));
+    public boolean addArrayLoad(String a, String arr, String index) {
+        return list.add(IRTranslator._array_load(a, arr, index));
     }
 
     public boolean addLabel(String name) {

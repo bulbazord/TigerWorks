@@ -32,13 +32,12 @@ public class ControlFlowGraph {
             this.dst = dst;
             }
 
-/*        @ TODO FIX LATER
         public boolean equals(Object other) { // comapres Edges to see if they are the same.
 
             if(other == null || !(other instanceof Edge)) {
                 return false;
 
-            } else if ( (Edge) other.src == src && (Edge) other.dst == dst) {
+            } else if ( ((Edge) other).src == src && ((Edge) other).dst == dst) {
                 return true;
                 
             } else {
@@ -46,7 +45,6 @@ public class ControlFlowGraph {
             }
 
             }
-  */      
         }
 
     private class ExtendedBasicBlock {
@@ -91,7 +89,6 @@ public class ControlFlowGraph {
             } else if (!inst.isEmpty()) {
                 if(branches().contains(inst.getOp())) {
                   //@TODO put it in our hashmap
-                  String
                 } else if(condBranches().contains(inst.getOp())) {
                     //@TODO put it in our hashset
                 } else {
@@ -183,7 +180,7 @@ public class ControlFlowGraph {
 
     // consolidate basic blocks into an extended basic block
     public ExtendedBasicBlock generateEbb(BasicBlock start, Set<BasicBlock> others) {
-        ArrayList<BasicBlock> blocks = basicBlocks.get(edge.dst);
+      //  ArrayList<BasicBlock> blocks = basicBlocks.get(edge.dst);
         return null;
     }
 }

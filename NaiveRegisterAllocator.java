@@ -36,6 +36,7 @@ public class NaiveRegisterAllocator {
             instructions.add("load, " + arg2 + ", " + "$" + i + ", ");
             instructions.add("load, " + arg3 + ", " + "$" + (i+1) + ", ");
             //Stores
+            instructions.add("store, " + arg3 + ", " + arg1 + ", " + arg2);
         }
 
     }

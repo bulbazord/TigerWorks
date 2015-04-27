@@ -153,7 +153,32 @@ public class ControlFlowGraph {
 
 
 
+
         // Here we populate our edge list of the CFG
+
+        for(Integer index : allBranches.keySet()) {
+            Instruction inst = ir.get(index);
+            String t = getTarget(inst);
+
+            if(t != null) {
+                Integer branchDestIndex = labels.get(t);
+                // add the edge
+                edges.add(new Edge(getBlockIndex(index),getBlockIndex(branchDestIndex)));
+            }
+
+            if(conditionalBranches.contains(index)) {
+                edges.add(new Edge(getBlockIndex(index), getBlockIndex(index+1)));
+            }
+        }
+
+        for (int i = 0; i < basicBlocks.size()-1; i++) {
+            List<Instruction> blockCode = basicBlocks.get(i).getInstructions();
+            Instruction blockEnd = blockCode.get(blockCode.size()-1);
+            if(!branches().contains(blockEnd) && !condBranches().contains(blockEnd)) {
+                edges.add(new Edge(i, i+1));
+            }
+        }
+
 
 
 
@@ -208,6 +233,16 @@ public class ControlFlowGraph {
         } else {
             return inst.getSrcTwo();
         }
+    }
+
+    // gets the index of the block using the line
+    public int getBlockIndex(int index) {
+        for (int i = 0; i < basicBlocks.size(); i++) {
+            if (basicBlocks.get(i).getFirstLineNum() > index) {
+                return i-1;
+            }
+        }
+        return basicBlocks.size() - 1;
     }
 
     // consolidate basic blocks into an extended basic block

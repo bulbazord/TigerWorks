@@ -1,19 +1,20 @@
 import java.util.ArrayList;
+import java.util.List;
 
 public class BasicBlock {
 
-    private ArrayList<Instruction> instructions; // holds all the instructions
+    private List<Instruction> instructions; // holds all the instructions
     private int firstLineNum;     // start line of a basic block
     
     // constructor
-    public BasicBlock(int start, ArrayList<Instruction> ir) {
+    public BasicBlock(int start, List<Instruction> ir) {
         instructions = ir;
         firstLineNum = start;
     }
     
     // retrieves all instructions from the BasicBlock
     public ArrayList<Instruction> getInstructions() {
-        return instructions;
+        return (ArrayList<Instruction>) instructions;
     }
     
     // first index that this block begins with

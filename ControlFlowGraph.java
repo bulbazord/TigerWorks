@@ -16,7 +16,7 @@ import java.util.List;
 */
 public class ControlFlowGraph {
 
-    Set<String> nonCondBranches;
+    Set<String> allBranches;
     Set<String> conditionalBranches;
     ArrayList<BasicBlock> basicBlocks;
     ArrayList<ExtendedBasicBlock> ebbs;
@@ -75,7 +75,7 @@ public class ControlFlowGraph {
         ebbs = new ArrayList<ExtendedBasicBlock>();
         edges = new HashSet<>();
 
-        Map<Integer, String>  nonCondBranches = new HashMap<Integer, String>();
+        Map<Integer, String>  allBranches = new HashMap<Integer, String>();
         Set<Integer> conditionalBranches = new HashSet<Integer>();
         Map<String,Integer> labels = new HashMap<>();
         String target;
@@ -89,16 +89,35 @@ public class ControlFlowGraph {
             } else if (!inst.isEmpty()) {
                 if(branches().contains(inst.getOp())) {
                     target = getTarget(inst);
-                    nonCondBranches.put(new Integer(i), target);
+                    allBranches.put(new Integer(i), target);
                 } else if(condBranches().contains(inst.getOp())) {
                     target = getTarget(inst);
+                    allBranches.put(new Integer(i), target);
                     conditionalBranches.add(new Integer(i));
                 }
             }
         }
 
 
+
+        // set of branch target addresses
         Set<Integer> branchDestinations = new HashSet<Integer>();
+        Iterator branchIterator = allBranches.entrySet().iterator();
+
+        while(branchIterator.hasNext()) {
+            Map.Entry mapping = (Map.Entry) branchIterator.next();
+
+            String lab = (String) mapping.getValue();
+
+            if(lab != null) {
+                Integer line = labels.get(lab);
+                if (line == null) {
+                    // break to label that is not there.
+                }
+
+                branchDestinations.add(line); // add the adress of the label jumping to
+            }
+        }
         // were gonna populate a hashset for branch target addresses
         
 
@@ -110,13 +129,25 @@ public class ControlFlowGraph {
         for(int i = 0; i < ir.size(); i++) {
             Integer intobj = new Integer(i);
             if(branchDestinations.contains(intobj)) {
+                if(start != i) {
+                    // make block and insert it into the CFG
+                    List<Instruction> blockCode = ir.subList(start, i);
+                    BasicBlock block = new BasicBlock(start, blockCode);
+                    basicBlocks.add(block); 
+                }
                 //is it a destination of a branch? Lets start a new basic block
-            } else if (branches().contains(intobj)) {
-                //lets make a basic block and put it into our ArrayList
+            } else if (allBranches.containsKey(intobj)) {
+                // are we branching away? make a block
+                List<Instruction> blockCode = ir.subList(start, i+1);
+                BasicBlock block = new BasicBlock(start, blockCode);
+                basicBlocks.add(block);
             } else if (i == ir.size() - 1) {
                 // congrats! were at the end of the program, lets put the rest into a basic block
+                List<Instruction> blockCode = ir.subList(start, i+1);
+                BasicBlock block = new BasicBlock(start, blockCode);
+                basicBlocks.add(block);
             } else {
-                // no need to make a new block yet, so don't do anything
+                // no need to make a new block yet, so don't do anything here :)
             }
         }
 
@@ -136,7 +167,7 @@ public class ControlFlowGraph {
         if(inst.isLabel() || inst.isEmpty()) {
             return false; // its an empty line or a label
         } else {
-            if(nonCondBranches.contains(inst.getOp()) || conditionalBranches.contains(inst.getOp())) {
+            if(allBranches.contains(inst.getOp()) || conditionalBranches.contains(inst.getOp())) {
                 return true; // will branch
             }
             return false; 

@@ -47,11 +47,14 @@ public class CodeGenerator {
         try {
             FileWriter writer = new FileWriter(destination);
             writer.write(".data\n");
-            writer.write(".text\n");
 
             for (String key : data.keySet()) {
                 writer.write(data.get(key) + "\n");
             }
+
+            writer.write(".text\n");
+            writer.write("main: \n");
+
             for (String m : mips) {
                 writer.write(m + "\n");
             }

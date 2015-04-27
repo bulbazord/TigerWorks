@@ -179,13 +179,33 @@ public class ControlFlowGraph {
             }
         }
 
-
-
-
-
         // then we have to make our extended basic blocks at the end
 
+        Set<BasicBlock> loneBlocks = new HashSet<>();
+        for(int i = 0; i < basicBlocks.size(); i++) {
+            loneBlocks.add(basicBlocks.get(i));
+        }
+
+        for (BasicBlock block : basicBlocks) {
+            int numEdges = getNumEdges(block);
+            if((numEdges > 1 || numEdges == 0) && loneBlocks.contains(block)) {
+                loneBlocks.remove(block);
+                generateEbb(block, loneBlocks); //@TODO finish this method
+            
+            }
+        }
+
         // WOOT were done with making the CFG!!!!!
+    }
+
+    int getNumEdges(BasicBlock block) {
+        int numEdges = 0;
+        for(Edge e : edges) {
+            if(basicBlocks.get(e.dst) == block) {
+                numEdges++;
+            }
+        }
+        return numEdges;
     }
 
     public Boolean isBranch(Instruction inst) {
@@ -247,7 +267,20 @@ public class ControlFlowGraph {
 
     // consolidate basic blocks into an extended basic block
     public ExtendedBasicBlock generateEbb(BasicBlock start, Set<BasicBlock> others) {
-      //  ArrayList<BasicBlock> blocks = basicBlocks.get(edge.dst);
-        return null;
+        ArrayList<BasicBlock> blocks = new ArrayList<BasicBlock>();
+        blocks.add(start);
+
+        for(Edge e : edges) {
+           BasicBlock block = basicBlocks.get(e.dst);
+           if(blocks.contains(basicBlocks.get(e.src)) && others.contains(block)) {
+               if(getNumEdges(block) == 1) {
+                   blocks.add(block);
+                   others.remove(block);
+                }
+            }
+        }
+        ExtendedBasicBlock ebb = new ExtendedBasicBlock(blocks);
+        ebbs.add(ebb);
+        return ebb;
     }
 }

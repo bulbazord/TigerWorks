@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.Iterator;
 import java.util.Map;
@@ -153,9 +154,7 @@ public class Instruction {
         return "";
     }
 
-    
-
-
-
-    
+    public String getParam(int i) {
+        return operationAndParams.get(i);
+    }
 }

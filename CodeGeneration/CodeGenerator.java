@@ -65,12 +65,9 @@ public class CodeGenerator {
     }
 
     private void IRtoMIPs () {
-        mips.add(".data");
-        mips.add(".text");
         for (IRInstruction instruction : ir) {
             List<String> mipsInstructions = MIPSTranslator.IRtoMIPS(instruction, data);
             mips.addAll(mipsInstructions);
         }
-        mips.add("jr $ra");
     }
 }

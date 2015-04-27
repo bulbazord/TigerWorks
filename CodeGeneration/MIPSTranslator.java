@@ -36,10 +36,14 @@ public class MIPSTranslator {
             case "load": // Loads a into val
                 a = params.get(0);
                 val = params.get(1);
+                data.put(a, a + ": .word 16");
+                result.add(_lw(a, "0", val));
                 break;
             case "store": // Stores val into a
                 val = params.get(0);
                 a = params.get(1);
+                data.put(a, a + ": .word 16");
+                result.add(_sw(val, "0", a));
                 break;
             case "assign":
                 // How to handle assign
@@ -74,31 +78,43 @@ public class MIPSTranslator {
                 a = params.get(0);
                 b = params.get(1);
                 label = params.get(2);
+                result.add(_sub("$26", a, b));
+                result.add(_blez("$26", label));
                 break;
             case "brgeq":
                 a = params.get(0);
                 b = params.get(1);
                 label = params.get(2);
+                result.add(_sub("$26", b, a));
+                result.add(_bgez("$26", label));
                 break;
             case "brgt":
                 a = params.get(0);
                 b = params.get(1);
                 label = params.get(2);
+                result.add(_sub("$26", b, a));
+                result.add(_bgtz("$26", label));
                 break;
             case "brlt":
                 a = params.get(0);
                 b = params.get(1);
                 label = params.get(2);
+                result.add(_sub("$26", a, b));
+                result.add(_bltz("$26", label));
                 break;
             case "brneq":
                 a = params.get(0);
                 b = params.get(1);
                 label = params.get(2);
+
+                result.add(_beq(a, b, label));
                 break;
             case "breq":
                 a = params.get(0);
                 b = params.get(1);
                 label = params.get(2);
+
+                result.add(_bne(a, b, label));
                 break;
             case "goto":
                 label = params.get(0);
@@ -110,9 +126,9 @@ public class MIPSTranslator {
                 c = params.get(2);
                 try {
                     Integer.parseInt(b);
-                    //result.add(_addi(c, a, b));
+                    result.add(_ori(c, a, b));
                 } catch (NumberFormatException e) {
-                    // result.add(_add(c, a, b));
+                    result.add(_or(c, a, b));
                 }
                 break;
             case "and":
@@ -121,9 +137,9 @@ public class MIPSTranslator {
                 c = params.get(2);
                 try {
                     Integer.parseInt(b);
-                    //result.add(_addi(c, a, b));
+                    result.add(_andi(c, a, b));
                 } catch (NumberFormatException e) {
-                    // result.add(_add(c, a, b));
+                    result.add(_and(c, a, b));
                 }
                 break;
             case "sub":
@@ -141,23 +157,17 @@ public class MIPSTranslator {
                 a = params.get(0);
                 b = params.get(1);
                 c = params.get(2);
-                try {
-                    Integer.parseInt(b);
-                    //result.add(_addi(c, a, b));
-                } catch (NumberFormatException e) {
-                    // result.add(_add(c, a, b));
-                }
+
+                result.add(_div(a, b));
+                result.add(_addi(c, "$LO", "0"));
                 break;
             case "mult":
                 a = params.get(0);
                 b = params.get(1);
                 c = params.get(2);
-                try {
-                    Integer.parseInt(b);
-                    //result.add(_addi(c, a, b));
-                } catch (NumberFormatException e) {
-                    // result.add(_add(c, a, b));
-                }
+
+                result.add(_mult(a, b));
+                result.add(_addi(c, "$LO", "0"));
                 break;
             case "add":
                 a = params.get(0);
@@ -254,9 +264,9 @@ public class MIPSTranslator {
         return template.replace("$s", s).replace("$offset", offset);
     }
 
-    public static String _bne (String s, String offset) {
+    public static String _bne (String s, String t, String offset) {
         String template = BNE;
-        return template.replace("$s", s).replace("$offset", offset);
+        return template.replace("$s", s).replace("$t", t).replace("$offset", offset);
     }
 
     public static String _div (String s, String t) {

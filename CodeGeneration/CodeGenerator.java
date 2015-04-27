@@ -12,11 +12,11 @@ public class CodeGenerator {
     private List<String> mips = new LinkedList<String>();
     private static final String DEFAULT_DESTINATION = "tiger.asm";
 
-    public CodeGenerator (String filename) {
-        this(filename, DEFAULT_DESTINATION);
+    public void generate (String filename) {
+        generate(filename, DEFAULT_DESTINATION);
     }
 
-    public CodeGenerator (String filename, String destinationFile) {
+    public void generate (String filename, String destinationFile) {
         try {
             BufferedReader br = new BufferedReader(new FileReader(filename));
             String line = br.readLine();

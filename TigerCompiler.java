@@ -1,3 +1,4 @@
+import CodeGeneration.CodeGenerator;
 import org.antlr.runtime.*;
 import org.antlr.runtime.tree.*;
 import org.antlr.stringtemplate.*;
@@ -61,6 +62,9 @@ public class TigerCompiler {
                     NaiveRegisterAllocator nra = new NaiveRegisterAllocator();
                     nra.allocate("ir.tigir");
                     nra.write();
+
+                    CodeGenerator cg = new CodeGenerator();
+                    cg.generate("ir2.tigir");
                 }
             }
         } catch (RecognitionException re) {

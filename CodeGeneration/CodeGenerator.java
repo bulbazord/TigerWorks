@@ -1,8 +1,10 @@
 package CodeGeneration;
 
 import java.io.*;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A class which takes in an IR filename and returns a MIPS assembly file.
@@ -10,6 +12,7 @@ import java.util.List;
 public class CodeGenerator {
     private List<IRInstruction> ir = new LinkedList<IRInstruction>();
     private List<String> mips = new LinkedList<String>();
+    private Map<String, String> data = new HashMap<String, String>();
     private static final String DEFAULT_DESTINATION = "tiger.asm";
 
     public void generate (String filename) {
@@ -43,9 +46,16 @@ public class CodeGenerator {
     private boolean writeMIPS (String destination) {
         try {
             FileWriter writer = new FileWriter(destination);
-            for (String m : mips) {
-                writer.write(m);
+            writer.write(".data\n");
+            writer.write(".text\n");
+
+            for (String key : data.keySet()) {
+                writer.write(data.get(key) + "\n");
             }
+            for (String m : mips) {
+                writer.write(m + "\n");
+            }
+            writer.write("jr $ra\n");
             writer.close();
         } catch (IOException e) {
             System.out.println("ERROR: Could not write MIPS to file " + destination);
@@ -58,7 +68,7 @@ public class CodeGenerator {
         mips.add(".data");
         mips.add(".text");
         for (IRInstruction instruction : ir) {
-            List<String> mipsInstructions = MIPSTranslator.IRtoMIPS(instruction);
+            List<String> mipsInstructions = MIPSTranslator.IRtoMIPS(instruction, data);
             mips.addAll(mipsInstructions);
         }
         mips.add("jr $ra");

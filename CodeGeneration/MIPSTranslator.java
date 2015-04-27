@@ -2,6 +2,7 @@ package CodeGeneration;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a MIPS Instruction
@@ -9,6 +10,7 @@ import java.util.List;
 public class MIPSTranslator {
     private static final String ADD = "add $d, $s, $t"; // $d = $s + $t
     private static final String ADDI = "addi $d, $s, $imm";
+    private static final String SUB = "sub $d, $s, $t"; // $d = $s + $t
     private static final String AND = "and $d, $s, $t";
     private static final String ANDI = "and $d, $s, $imm";
     private static final String OR = "or $d, $s, $t";
@@ -26,10 +28,10 @@ public class MIPSTranslator {
     private static final String LW = "lw $t, $offset($s)"; //load byte
     private static final String SW = "sw $t, $offset($s)"; // MEM[$s + offset] = $t
 
-    public static List<String> IRtoMIPS (IRInstruction ir) {
+    public static List<String> IRtoMIPS (IRInstruction ir, Map<String, String> data) {
         List<String> result = new LinkedList<String>();
         List<String> params = ir.getParams();
-        String a, b, c, label, i, val, arr;
+        String a, b, c, label, i, val, arr, func;
         switch (ir.getType()) {
             case "load": // Loads a into val
                 a = params.get(0);
@@ -58,10 +60,15 @@ public class MIPSTranslator {
                 val = params.get(2);
                 break;
             case "call":
-                // Not doing this
+                func = params.get(0);
+                break;
+            case "callr":
+                a = params.get(0);
+                func = params.get(1);
                 break;
             case "return":
                 val = params.get(0);
+                result.add(_jr(val));
                 break;
             case "brleq":
                 a = params.get(0);
@@ -125,9 +132,9 @@ public class MIPSTranslator {
                 c = params.get(2);
                 try {
                     Integer.parseInt(b);
-                    //result.add(_addi(c, a, b));
+                    result.add(_addi(c, a, "-" + b));
                 } catch (NumberFormatException e) {
-                    // result.add(_add(c, a, b));
+                    result.add(_sub(c, a, b));
                 }
                 break;
             case "div":
@@ -164,7 +171,7 @@ public class MIPSTranslator {
                     result.add(_add(c, a, b));
                 }
                 break;
-            case "label":
+            default:
                 result.add(ir.toString());
                 break;
         }
@@ -194,6 +201,11 @@ public class MIPSTranslator {
 
     public static String _ori (String d, String s, String t) {
         String template = ORI;
+        return template.replace("$d", d).replace("$s", s).replace("$t", t);
+    }
+
+    public static String _sub (String d, String s, String t) {
+        String template = SUB;
         return template.replace("$d", d).replace("$s", s).replace("$t", t);
     }
 
